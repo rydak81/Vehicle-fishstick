@@ -34,7 +34,8 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'Geist', -apple-system, sans-serif;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
@@ -606,7 +607,7 @@
 
   .section-title {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px;
+    font-size: 11px;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     margin: 16px 0 10px;
@@ -631,14 +632,14 @@
     margin-bottom: 5px;
   }
 
-  .field label .name { font-size: 11.5px; color: var(--text); }
+  .field label .name { font-size: 13px; color: var(--text); }
 
   .vehicle-panel.a .field label .value { color: var(--accent-a); }
   .vehicle-panel.b .field label .value { color: var(--accent-b); }
 
   .field label .value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 500;
   }
 
@@ -647,9 +648,9 @@
     background: var(--bg);
     border: 1px solid var(--line);
     color: var(--paper);
-    padding: 7px 11px;
+    padding: 8px 12px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 13.5px;
     border-radius: 2px;
   }
 
@@ -3395,7 +3396,10 @@ function recompute() {
   const aWins = useTotal ? aResult.total < bResult.total : aResult.annualized < bResult.annualized;
   const delta = useTotal ? Math.abs(aResult.total - bResult.total) : Math.abs(aResult.annualized - bResult.annualized);
 
-  document.getElementById('verdict').style.setProperty('--verdict-color', aWins ? 'var(--accent-a)' : 'var(--accent-b)');
+  const verdictEl = document.getElementById('verdict');
+  verdictEl.style.setProperty('--verdict-color', aWins ? 'var(--accent-a)' : 'var(--accent-b)');
+  verdictEl.classList.remove('winner-a', 'winner-b');
+  verdictEl.classList.add(aWins ? 'winner-a' : 'winner-b');
   const aLabel = `${state.a.name} (${state.a.mode === 'buy' ? 'Buy' : 'Lease'})`;
   const bLabel = `${state.b.name} (${state.b.mode === 'buy' ? 'Buy' : 'Lease'})`;
   document.getElementById('verdictText').innerHTML = aWins
@@ -4031,25 +4035,6 @@ window.addEventListener('scroll', () => {
   }
   lastScroll = scrollY;
 }, { passive: true });
-
-// Verdict winner class based on result
-const originalUpdateVerdict = updateVerdict;
-updateVerdict = function(a, b) {
-  originalUpdateVerdict(a, b);
-  
-  const verdict = document.getElementById('verdict');
-  const annA = a.total / a.T;
-  const annB = b.total / b.T;
-  
-  verdict.classList.remove('winner-a', 'winner-b');
-  if (annA < annB) {
-    verdict.classList.add('winner-a');
-    verdict.style.setProperty('--verdict-color', 'var(--accent-a)');
-  } else {
-    verdict.classList.add('winner-b');
-    verdict.style.setProperty('--verdict-color', 'var(--accent-b)');
-  }
-};
 
 // Mode toggle smooth transition
 document.querySelectorAll('.mode-toggle').forEach(toggle => {
