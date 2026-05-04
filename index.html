@@ -1,0 +1,3590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vehicle Decision Engine v4 — SC Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@300;400;500;600&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0d0a;
+    --bg-2: #14130f;
+    --bg-3: #1a1812;
+    --paper: #f5f1e8;
+    --line: #2a2723;
+    --line-soft: #1f1c18;
+    --accent-a: #d4a574;
+    --accent-b: #5b9b9b;
+    --accent-2: #8fb89a;
+    --danger: #c97064;
+    --gold: #e6c068;
+    --text: #e8e3d6;
+    --text-dim: #8a8478;
+    --text-faint: #5a544a;
+    --sc-flag: #003876;
+    --sc-flag-2: #fff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(212,165,116,0.05), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(91,155,155,0.05), transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.03;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 36px 22px 80px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
+  .masthead .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-a);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .masthead .eyebrow::before {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background: var(--accent-a);
+  }
+
+  .sc-badge {
+    background: linear-gradient(135deg, rgba(0,56,118,0.3), rgba(0,56,118,0.1));
+    border: 1px solid rgba(0,56,118,0.5);
+    color: #b8d4f0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    margin-left: 12px;
+  }
+
+  .masthead h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    color: var(--paper);
+  }
+
+  .masthead h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent-a);
+  }
+
+  .masthead .sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 14px;
+    max-width: 600px;
+    line-height: 1.6;
+  }
+
+  .meta-strip {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    color: var(--text-faint);
+    line-height: 1.9;
+  }
+
+  .meta-strip .live {
+    color: var(--accent-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .meta-strip .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    box-shadow: 0 0 10px var(--accent-2);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* MODE TOGGLE BAR (unified vs natural) */
+  .mode-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 22px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .mode-bar .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+  }
+
+  .mode-bar .toggle {
+    display: inline-flex;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 2px;
+  }
+
+  .mode-bar .toggle button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+
+  .mode-bar .toggle button.active {
+    background: var(--accent-a);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .mode-bar .info {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    flex: 1;
+    min-width: 280px;
+  }
+
+  .scenario-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .scenario-actions button {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .scenario-actions button:hover {
+    border-color: var(--accent-a);
+    color: var(--accent-a);
+  }
+
+  .scenario-actions button.primary {
+    background: var(--accent-a);
+    border-color: var(--accent-a);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .scenario-actions button.primary:hover {
+    opacity: 0.9;
+    color: var(--bg);
+  }
+
+  /* SAVED SCENARIOS BAR */
+  .saved-scenarios {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 12px 18px;
+    margin-bottom: 22px;
+    display: none;
+  }
+
+  .saved-scenarios.has-items { display: block; }
+
+  .saved-scenarios h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .saved-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .saved-chip {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    padding: 8px 12px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .saved-chip .name { color: var(--paper); font-weight: 500; }
+  .saved-chip .cost { color: var(--accent-a); }
+
+  .saved-chip button {
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .saved-chip button:hover { color: var(--danger); }
+  .saved-chip button.load { color: var(--accent-b); margin-left: 4px; }
+  .saved-chip button.load:hover { color: var(--accent-a); }
+
+  /* SHARED PARAMETERS BAR */
+  .shared-bar {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 16px 20px;
+    margin-bottom: 22px;
+    display: grid;
+    grid-template-columns: auto repeat(6, 1fr);
+    gap: 18px;
+    align-items: center;
+  }
+
+  @media (max-width: 1200px) {
+    .shared-bar { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 700px) {
+    .shared-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .shared-bar .head {
+    border-right: 1px solid var(--line);
+    padding-right: 18px;
+  }
+
+  .shared-bar .head .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--accent-a);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .shared-bar .head h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 17px;
+    color: var(--paper);
+  }
+
+  .micro-field label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.16em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .micro-field .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-a);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .micro-field input[type="range"] { width: 100%; }
+  .micro-field .num-input-wrap { position: relative; }
+  .micro-field input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--paper);
+    padding: 5px 8px 5px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    border-radius: 2px;
+  }
+  .micro-field .num-input-wrap .prefix {
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+
+  /* COMPARE GRID */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 1100px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  .vehicle-panel {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .vehicle-panel.a::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-a), transparent);
+  }
+
+  .vehicle-panel.b::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-b), transparent);
+  }
+
+  .vehicle-header {
+    padding: 18px 22px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .vehicle-header .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .vehicle-header .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .vehicle-panel.a .tag { color: var(--accent-a); }
+  .vehicle-panel.b .tag { color: var(--accent-b); }
+
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 2px;
+  }
+
+  .mode-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 5px 13px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  .vehicle-panel.a .mode-toggle button.active {
+    background: var(--accent-a);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .vehicle-panel.b .mode-toggle button.active {
+    background: var(--accent-b);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .vehicle-header h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--paper);
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin-top: 4px;
+  }
+
+  .vehicle-header .meta-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-faint);
+    margin-top: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  /* SEARCH */
+  .selector-row {
+    padding: 12px 22px;
+    background: var(--bg-3);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--paper);
+    padding: 8px 14px 8px 34px;
+    font-family: 'Geist', sans-serif;
+    font-size: 12.5px;
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .vehicle-panel.a .search-wrap input:focus { border-color: var(--accent-a); }
+  .vehicle-panel.b .search-wrap input:focus { border-color: var(--accent-b); }
+
+  .search-wrap .icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .search-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    max-height: 320px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    display: none;
+  }
+  .search-results.open { display: block; }
+
+  .search-result {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+  }
+  .search-result:hover { background: var(--bg-2); }
+
+  .search-result .name {
+    font-size: 12.5px;
+    color: var(--paper);
+    margin-bottom: 2px;
+  }
+
+  .search-result .detail {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 2px;
+    background: rgba(212,165,116,0.12);
+    color: var(--accent-a);
+    margin-left: 4px;
+  }
+  .badge.ev { background: rgba(91,155,155,0.15); color: var(--accent-b); }
+  .badge.hybrid { background: rgba(143,184,154,0.15); color: var(--accent-2); }
+  .badge.luxury { background: rgba(230,192,104,0.15); color: var(--gold); }
+  .badge.truck { background: rgba(201,112,100,0.12); color: var(--danger); }
+
+  .vin-btn {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    padding: 0 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  /* PANEL BODY */
+  .vehicle-body { padding: 18px 22px; }
+
+  .section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin: 16px 0 10px;
+    padding-bottom: 7px;
+    border-bottom: 1px dashed var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .vehicle-panel.a .section-title { color: var(--accent-a); }
+  .vehicle-panel.b .section-title { color: var(--accent-b); }
+  .section-title:first-child { margin-top: 0; }
+  .section-title .num { color: var(--text-faint); font-weight: 300; }
+
+  .field { margin-bottom: 11px; }
+
+  .field label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+  }
+
+  .field label .name { font-size: 11.5px; color: var(--text); }
+
+  .vehicle-panel.a .field label .value { color: var(--accent-a); }
+  .vehicle-panel.b .field label .value { color: var(--accent-b); }
+
+  .field label .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+
+  .field input[type="number"], .field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--paper);
+    padding: 7px 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border-radius: 2px;
+  }
+
+  .field select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 32px;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--line);
+    border-radius: 1px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .vehicle-panel.a input[type="range"]::-webkit-slider-thumb {
+    background: var(--accent-a);
+    box-shadow: 0 0 0 4px rgba(212,165,116,0.15);
+  }
+
+  .vehicle-panel.b input[type="range"]::-webkit-slider-thumb {
+    background: var(--accent-b);
+    box-shadow: 0 0 0 4px rgba(91,155,155,0.15);
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .num-input-wrap { position: relative; }
+  .num-input-wrap .prefix {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    pointer-events: none;
+  }
+  .num-input-wrap input { padding-left: 24px !important; }
+
+  /* PAYMENT BREAKDOWN BOX (within panel) */
+  .payment-detail {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+    border-radius: 2px;
+    margin-top: 10px;
+  }
+
+  .payment-detail .pd-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .payment-detail .pd-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .payment-detail .pd-row.total {
+    border-top: 1px solid var(--line);
+    margin-top: 6px;
+    padding-top: 8px;
+    font-weight: 600;
+  }
+
+  .payment-detail .pd-row .label { color: var(--text-dim); }
+  .payment-detail .pd-row .value { color: var(--paper); }
+
+  .vehicle-panel.a .payment-detail .pd-row.total .value { color: var(--accent-a); }
+  .vehicle-panel.b .payment-detail .pd-row.total .value { color: var(--accent-b); }
+
+  /* RESULT SUMMARY */
+  .vehicle-result {
+    padding: 14px 22px;
+    background: var(--bg-3);
+    border-top: 1px solid var(--line);
+  }
+
+  .vehicle-result .total-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .vehicle-result .total-line .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-faint);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .vehicle-result .total-line .val {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .vehicle-panel.a .vehicle-result .total-line .val { color: var(--accent-a); }
+  .vehicle-panel.b .vehicle-result .total-line .val { color: var(--accent-b); }
+
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .mini-stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 3px;
+  }
+
+  .mini-stat .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* VERDICT */
+  .verdict {
+    background: linear-gradient(135deg, var(--bg-2), #16140f);
+    border: 1px solid var(--line);
+    padding: 28px 32px;
+    border-radius: 2px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .verdict::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 4px;
+    background: var(--verdict-color, var(--accent-a));
+    transition: background 0.4s;
+  }
+
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .verdict .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .verdict h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(22px, 3vw, 34px);
+    color: var(--paper);
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+  }
+
+  .verdict h3 strong {
+    font-weight: 600;
+    color: var(--verdict-color, var(--accent-a));
+    font-style: italic;
+  }
+
+  .verdict .delta {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .verdict .delta-amount {
+    font-size: 28px;
+    color: var(--verdict-color, var(--accent-a));
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .verdict .delta-label {
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .verdict .reasoning {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--line);
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-style: italic;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* NORMALIZED METRICS */
+  .normalize-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    margin-top: 18px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .normalize-cell {
+    background: var(--bg-2);
+    padding: 14px 16px;
+  }
+
+  .normalize-cell .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+
+  .normalize-cell .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 3px 0;
+  }
+
+  .normalize-cell .row.a .name { color: var(--accent-a); }
+  .normalize-cell .row.b .name { color: var(--accent-b); }
+
+  .normalize-cell .row .name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .normalize-cell .row .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--paper);
+    font-weight: 500;
+  }
+
+  .normalize-cell .row .val.win { color: var(--accent-2); }
+
+  /* CARDS */
+  .stack { display: flex; flex-direction: column; gap: 22px; }
+
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 24px;
+  }
+
+  .card h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--paper);
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+
+  .card .desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .chart-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+
+  .chart-tabs button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 9px 13px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .chart-tabs button.active {
+    color: var(--accent-a);
+    border-bottom-color: var(--accent-a);
+  }
+
+  .chart-tabs button:hover { color: var(--paper); }
+
+  .chart-wrap {
+    height: 340px;
+    position: relative;
+  }
+
+  /* COMPARE TABLE */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .compare-table th, .compare-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 12px;
+  }
+
+  .compare-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    font-weight: 500;
+    background: var(--bg);
+  }
+
+  .compare-table td.metric {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .compare-table td.label { color: var(--text-dim); }
+  .compare-table td.win-a { color: var(--accent-a); }
+  .compare-table td.win-b { color: var(--accent-b); }
+
+  .compare-table tr.section-row td {
+    background: var(--bg);
+    color: var(--accent-a);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding-top: 14px;
+    padding-bottom: 8px;
+    border-bottom: none;
+  }
+
+  /* INSIGHTS */
+  .insight-list { display: grid; gap: 11px; }
+
+  .insight {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 16px;
+    padding: 13px 16px;
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+    align-items: center;
+  }
+
+  .insight .icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .insight .icon.warn { background: rgba(201,112,100,0.15); color: var(--danger); }
+  .insight .icon.good { background: rgba(143,184,154,0.15); color: var(--accent-2); }
+  .insight .icon.info { background: rgba(212,165,116,0.15); color: var(--accent-a); }
+  .insight .icon.note { background: rgba(91,155,155,0.15); color: var(--accent-b); }
+
+  .insight .body .title {
+    font-size: 13px;
+    color: var(--paper);
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .insight .body .text {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .insight .metric {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-a);
+    font-weight: 500;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* NEGOTIATION CARD */
+  .negot-card {
+    background: linear-gradient(135deg, var(--bg-2), #16140f);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 24px;
+    position: relative;
+  }
+
+  .negot-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+  }
+
+  .negot-card h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--paper);
+    margin-bottom: 4px;
+  }
+
+  .negot-card .desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+  }
+
+  .negot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+
+  .negot-stat {
+    padding: 14px 16px;
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+  }
+
+  .negot-stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .negot-stat .val {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--paper);
+    letter-spacing: -0.01em;
+  }
+
+  .negot-stat .val .unit {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 4px;
+  }
+
+  .negot-stat .desc-small {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  /* MODAL */
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal.open { display: flex; }
+
+  .modal-content {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+    position: relative;
+  }
+
+  .modal-content::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+  }
+
+  .modal-content h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--paper);
+    margin-bottom: 6px;
+  }
+
+  .modal-content .desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+  }
+
+  .modal-content input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--paper);
+    padding: 11px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    border-radius: 2px;
+    margin-bottom: 14px;
+  }
+
+  .modal-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 9px 11px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    margin-bottom: 14px;
+    min-height: 18px;
+  }
+
+  .modal-status.success { color: var(--accent-2); border-color: var(--accent-2); }
+  .modal-status.error { color: var(--danger); border-color: var(--danger); }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .modal-actions button {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    padding: 9px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  .modal-actions button.primary {
+    background: var(--accent-a);
+    border-color: var(--accent-a);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  footer {
+    margin-top: 44px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--text-faint);
+    line-height: 1.7;
+  }
+
+  footer strong { color: var(--text-dim); font-weight: 500; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeUp 0.5s ease-out; }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div class="container">
+  <header>
+    <div class="masthead">
+      <div class="eyebrow">Decision Engine v4 · BeaconPath<span class="sc-badge">SC Edition</span></div>
+      <h1>Real Numbers.<br/>Real <em>Negotiation</em> Power.</h1>
+      <div class="sub">Calibrated for South Carolina tax law: $500 IMF cap (no sales tax on vehicles), annual property tax by Greenville County millage, full dealer fee transparency, scenario save/compare, and unified-timeline mode.</div>
+    </div>
+    <div class="meta-strip">
+      <div class="live"><span class="dot"></span>SC TAX MODEL</div>
+      <div>VIN DECODE · NHTSA vPIC</div>
+      <div id="timestamp"></div>
+    </div>
+  </header>
+
+  <!-- COMPARE MODE BAR -->
+  <div class="mode-bar">
+    <span class="label">Compare Mode:</span>
+    <div class="toggle" id="compareModeToggle">
+      <button class="active" data-mode="natural">Natural (Each Vehicle's Hold)</button>
+      <button data-mode="unified">Unified Timeline</button>
+    </div>
+    <span class="info" id="compareModeInfo">Each vehicle uses its own hold period. Compare on annualized cost or cost-per-mile.</span>
+    <div class="scenario-actions">
+      <button id="saveBtn">+ Save Scenario</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- SAVED SCENARIOS -->
+  <div class="saved-scenarios" id="savedScenarios">
+    <h4>Saved Scenarios</h4>
+    <div class="saved-list" id="savedList"></div>
+  </div>
+
+  <!-- SHARED PARAMETERS -->
+  <div class="shared-bar">
+    <div class="head">
+      <div class="lbl">SC Profile</div>
+      <h3>Your Inputs</h3>
+    </div>
+    <div class="micro-field">
+      <label>County Millage</label>
+      <div class="val" id="millageVal">320</div>
+      <input type="range" id="millage" min="200" max="450" value="320" step="5"/>
+    </div>
+    <div class="micro-field">
+      <label>Investment Return</label>
+      <div class="val" id="investReturnVal">7.00%</div>
+      <input type="range" id="investReturn" min="0" max="15" value="7" step="0.25"/>
+    </div>
+    <div class="micro-field">
+      <label>Business Use</label>
+      <div class="val" id="businessUseVal">0%</div>
+      <input type="range" id="businessUse" min="0" max="100" value="0" step="5"/>
+    </div>
+    <div class="micro-field">
+      <label>Gas Price ($/gal)</label>
+      <div class="val" id="gasPriceVal">$3.10</div>
+      <div class="num-input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="gasPrice" value="3.10" step="0.05" min="0"/>
+      </div>
+    </div>
+    <div class="micro-field">
+      <label>Electricity ($/kWh)</label>
+      <div class="val" id="elecPriceVal">$0.16</div>
+      <div class="num-input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="elecPrice" value="0.16" step="0.01" min="0"/>
+      </div>
+    </div>
+    <div class="micro-field">
+      <label>Doc Fee (Dealer)</label>
+      <div class="val" id="docFeeVal">$499</div>
+      <div class="num-input-wrap">
+        <span class="prefix">$</span>
+        <input type="number" id="docFee" value="499" step="25" min="0"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- VEHICLES -->
+  <div class="compare-grid">
+    <!-- VEHICLE A -->
+    <div class="vehicle-panel a" data-side="a">
+      <div class="vehicle-header">
+        <div class="row">
+          <div class="tag">— Vehicle A</div>
+          <div class="mode-toggle">
+            <button class="active" data-mode="buy">Buy</button>
+            <button data-mode="lease">Lease</button>
+          </div>
+        </div>
+        <h2 id="nameA">Ford F-150 Hybrid</h2>
+        <div class="meta-line" id="metaA">2025 · TRUCK · HYBRID · 24 MPG</div>
+      </div>
+
+      <div class="selector-row">
+        <div class="search-wrap">
+          <span class="icon">⌕</span>
+          <input type="text" placeholder="Search vehicle..." data-side="a" class="vehicle-search"/>
+          <div class="search-results" data-side="a"></div>
+        </div>
+        <button class="vin-btn" data-side="a">VIN</button>
+      </div>
+
+      <div class="vehicle-body">
+        <div class="section-title"><span>Hold & Use Profile</span><span class="num">A·01</span></div>
+        <div class="field-row">
+          <div class="field">
+            <label><span class="name">Hold Period</span><span class="value" id="holdYearsAVal">6 yrs</span></label>
+            <input type="range" id="holdYearsA" min="2" max="12" value="6" step="1"/>
+          </div>
+          <div class="field">
+            <label><span class="name">Annual Miles</span><span class="value" id="annualMilesAVal">12,000</span></label>
+            <input type="range" id="annualMilesA" min="3000" max="30000" value="12000" step="500"/>
+          </div>
+        </div>
+
+        <div class="section-title"><span>Vehicle Pricing</span><span class="num">A·02</span></div>
+        <div class="field-row">
+          <div class="field">
+            <label><span class="name">MSRP</span><span class="value" id="msrpAVal">$58,000</span></label>
+            <div class="num-input-wrap">
+              <span class="prefix">$</span>
+              <input type="number" id="msrpA" value="58000" step="500"/>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="name">Negotiated Price</span><span class="value" id="salePriceAVal">$55,000</span></label>
+            <div class="num-input-wrap">
+              <span class="prefix">$</span>
+              <input type="number" id="salePriceA" value="55000" step="500"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title"><span>Fuel / Energy</span><span class="num">A·03</span></div>
+        <div class="field-row">
+          <div class="field" id="mpgFieldA">
+            <label><span class="name">Combined MPG</span><span class="value" id="mpgAVal">24</span></label>
+            <input type="number" id="mpgA" value="24" step="1" min="1"/>
+          </div>
+          <div class="field" id="kwhFieldA" style="display:none">
+            <label><span class="name">kWh / 100 mi</span><span class="value" id="kwhAVal">42</span></label>
+            <input type="number" id="kwhA" value="42" step="1" min="1"/>
+          </div>
+          <div class="field">
+            <label><span class="name">Annual Fuel Cost</span><span class="value" id="fuelCostAVal">—</span></label>
+            <input type="number" disabled style="opacity:0.5; pointer-events:none" id="fuelCostADisplay"/>
+          </div>
+        </div>
+
+        <!-- BUY -->
+        <div class="mode-fields buy-fields" data-side="a">
+          <div class="section-title"><span>Purchase Terms</span><span class="num">A·04</span></div>
+          <div class="field">
+            <label><span class="name">Down Payment</span><span class="value" id="downPaymentAVal">$5,000</span></label>
+            <input type="range" id="downPaymentA" min="0" max="20000" value="5000" step="500"/>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label><span class="name">Loan APR</span><span class="value" id="loanAprAVal">6.50%</span></label>
+              <input type="range" id="loanAprA" min="0" max="15" value="6.5" step="0.1"/>
+            </div>
+            <div class="field">
+              <label><span class="name">Loan Term</span><span class="value" id="loanTermAVal">60 mo</span></label>
+              <select id="loanTermA">
+                <option value="36">36 mo</option>
+                <option value="48">48 mo</option>
+                <option value="60" selected>60 mo</option>
+                <option value="72">72 mo</option>
+                <option value="84">84 mo</option>
+              </select>
+            </div>
+          </div>
+          <div class="payment-detail" id="buyPaymentDetailA">
+            <div class="pd-title">Monthly Payment Breakdown</div>
+            <div class="pd-row"><span class="label">Sale Price</span><span class="value" id="pdaSale">$0</span></div>
+            <div class="pd-row"><span class="label">+ SC IMF (5% capped @$500)</span><span class="value" id="pdaImf">$500</span></div>
+            <div class="pd-row"><span class="label">+ Doc Fee</span><span class="value" id="pdaDoc">$499</span></div>
+            <div class="pd-row"><span class="label">+ Title/Tag/Plate</span><span class="value" id="pdaTitle">$80</span></div>
+            <div class="pd-row"><span class="label">− Down Payment</span><span class="value" id="pdaDown">$0</span></div>
+            <div class="pd-row"><span class="label">= Amount Financed</span><span class="value" id="pdaFinanced">$0</span></div>
+            <div class="pd-row total"><span class="label">Monthly Payment</span><span class="value" id="pdaPayment">$0</span></div>
+          </div>
+        </div>
+
+        <!-- LEASE -->
+        <div class="mode-fields lease-fields" data-side="a" style="display:none">
+          <div class="section-title"><span>Lease Terms</span><span class="num">A·04</span></div>
+          <div class="field-row">
+            <div class="field">
+              <label><span class="name">Money Factor</span><span class="value" id="moneyFactorAVal">0.00208</span></label>
+              <input type="range" id="moneyFactorA" min="0" max="0.005" value="0.00208" step="0.00005"/>
+            </div>
+            <div class="field">
+              <label><span class="name">Lease Term</span><span class="value" id="leaseTermAVal">36 mo</span></label>
+              <select id="leaseTermA">
+                <option value="24">24 mo</option>
+                <option value="36" selected>36 mo</option>
+                <option value="39">39 mo</option>
+                <option value="48">48 mo</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label><span class="name">Residual %</span><span class="value" id="residualPctAVal">62%</span></label>
+              <input type="range" id="residualPctA" min="35" max="75" value="62" step="1"/>
+            </div>
+            <div class="field">
+              <label><span class="name">Cap Reduction</span><span class="value" id="capReductionAVal">$2,500</span></label>
+              <div class="num-input-wrap">
+                <span class="prefix">$</span>
+                <input type="number" id="capReductionA" value="2500" step="500"/>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="name">Mileage Allowance</span><span class="value" id="mileageAllowAVal">12,000</span></label>
+            <select id="mileageAllowA">
+              <option value="7500">7,500 mi/yr</option>
+              <option value="10000">10,000 mi/yr</option>
+              <option value="10500">10,500 mi/yr</option>
+              <option value="12000" selected>12,000 mi/yr</option>
+              <option value="15000">15,000 mi/yr</option>
+              <option value="20000">20,000 mi/yr</option>
+            </select>
+          </div>
+          <div class="payment-detail" id="leasePaymentDetailA">
+            <div class="pd-title">Monthly Payment Breakdown</div>
+            <div class="pd-row"><span class="label">Adj Cap Cost</span><span class="value" id="pdaAdjcap">$0</span></div>
+            <div class="pd-row"><span class="label">Residual</span><span class="value" id="pdaResidual">$0</span></div>
+            <div class="pd-row"><span class="label">Depreciation / mo</span><span class="value" id="pdaDep">$0</span></div>
+            <div class="pd-row"><span class="label">+ Finance Charge / mo</span><span class="value" id="pdaFin">$0</span></div>
+            <div class="pd-row total"><span class="label">Monthly Payment</span><span class="value" id="pdaLpmt">$0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vehicle-result">
+        <div class="total-line">
+          <span class="lbl">TOTAL · <span id="resultPeriodA">6 yrs</span></span>
+          <span class="val" id="totalA">—</span>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-stat">
+            <div class="lbl">Eff $/Mo</div>
+            <div class="val" id="effMonthlyA">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="lbl">$/Mile</div>
+            <div class="val" id="costPerMileA">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="lbl">Fuel/Yr</div>
+            <div class="val" id="fuelYrA">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="lbl">Equity</div>
+            <div class="val" id="equityA">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VEHICLE B -->
+    <div class="vehicle-panel b" data-side="b">
+      <div class="vehicle-header">
+        <div class="row">
+          <div class="tag">— Vehicle B</div>
+          <div class="mode-toggle">
+            <button data-mode="buy">Buy</button>
+            <button class="active" data-mode="lease">Lease</button>
+          </div>
+        </div>
+        <h2 id="nameB">Ford F-150 Lightning</h2>
+        <div class="meta-line" id="metaB">2025 · EV TRUCK · 49 kWh/100mi</div>
+      </div>
+
+      <div class="selector-row">
+        <div class="search-wrap">
+          <span class="icon">⌕</span>
+          <input type="text" placeholder="Search vehicle..." data-side="b" class="vehicle-search"/>
+          <div class="search-results" data-side="b"></div>
+        </div>
+        <button class="vin-btn" data-side="b">VIN</button>
+      </div>
+
+      <div class="vehicle-body">
+        <div class="section-title"><span>Hold & Use Profile</span><span class="num">B·01</span></div>
+        <div class="field-row">
+          <div class="field">
+            <label><span class="name">Hold Period</span><span class="value" id="holdYearsBVal">3 yrs</span></label>
+            <input type="range" id="holdYearsB" min="2" max="12" value="3" step="1"/>
+          </div>
+          <div class="field">
+            <label><span class="name">Annual Miles</span><span class="value" id="annualMilesBVal">7,000</span></label>
+            <input type="range" id="annualMilesB" min="3000" max="30000" value="7000" step="500"/>
+          </div>
+        </div>
+
+        <div class="section-title"><span>Vehicle Pricing</span><span class="num">B·02</span></div>
+        <div class="field-row">
+          <div class="field">
+            <label><span class="name">MSRP</span><span class="value" id="msrpBVal">$72,000</span></label>
+            <div class="num-input-wrap">
+              <span class="prefix">$</span>
+              <input type="number" id="msrpB" value="72000" step="500"/>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="name">Negotiated Price</span><span class="value" id="salePriceBVal">$68,000</span></label>
+            <div class="num-input-wrap">
+              <span class="prefix">$</span>
+              <input type="number" id="salePriceB" value="68000" step="500"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title"><span>Fuel / Energy</span><span class="num">B·03</span></div>
+        <div class="field-row">
+          <div class="field" id="mpgFieldB" style="display:none">
+            <label><span class="name">Combined MPG</span><span class="value" id="mpgBVal">24</span></label>
+            <input type="number" id="mpgB" value="24" step="1" min="1"/>
+          </div>
+          <div class="field" id="kwhFieldB">
+            <label><span class="name">kWh / 100 mi</span><span class="value" id="kwhBVal">49</span></label>
+            <input type="number" id="kwhB" value="49" step="1" min="1"/>
+          </div>
+          <div class="field">
+            <label><span class="name">Annual Fuel Cost</span><span class="value" id="fuelCostBVal">—</span></label>
+            <input type="number" disabled style="opacity:0.5; pointer-events:none" id="fuelCostBDisplay"/>
+          </div>
+        </div>
+
+        <div class="mode-fields buy-fields" data-side="b" style="display:none">
+          <div class="section-title"><span>Purchase Terms</span><span class="num">B·04</span></div>
+          <div class="field">
+            <label><span class="name">Down Payment</span><span class="value" id="downPaymentBVal">$5,000</span></label>
+            <input type="range" id="downPaymentB" min="0" max="20000" value="5000" step="500"/>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label><span class="name">Loan APR</span><span class="value" id="loanAprBVal">6.50%</span></label>
+              <input type="range" id="loanAprB" min="0" max="15" value="6.5" step="0.1"/>
+            </div>
+            <div class="field">
+              <label><span class="name">Loan Term</span><span class="value" id="loanTermBVal">60 mo</span></label>
+              <select id="loanTermB">
+                <option value="36">36 mo</option>
+                <option value="48">48 mo</option>
+                <option value="60" selected>60 mo</option>
+                <option value="72">72 mo</option>
+                <option value="84">84 mo</option>
+              </select>
+            </div>
+          </div>
+          <div class="payment-detail" id="buyPaymentDetailB">
+            <div class="pd-title">Monthly Payment Breakdown</div>
+            <div class="pd-row"><span class="label">Sale Price</span><span class="value" id="pdbSale">$0</span></div>
+            <div class="pd-row"><span class="label">+ SC IMF (5% capped @$500)</span><span class="value" id="pdbImf">$500</span></div>
+            <div class="pd-row"><span class="label">+ Doc Fee</span><span class="value" id="pdbDoc">$499</span></div>
+            <div class="pd-row"><span class="label">+ Title/Tag/Plate</span><span class="value" id="pdbTitle">$80</span></div>
+            <div class="pd-row"><span class="label">− Down Payment</span><span class="value" id="pdbDown">$0</span></div>
+            <div class="pd-row"><span class="label">= Amount Financed</span><span class="value" id="pdbFinanced">$0</span></div>
+            <div class="pd-row total"><span class="label">Monthly Payment</span><span class="value" id="pdbPayment">$0</span></div>
+          </div>
+        </div>
+
+        <div class="mode-fields lease-fields" data-side="b">
+          <div class="section-title"><span>Lease Terms</span><span class="num">B·04</span></div>
+          <div class="field-row">
+            <div class="field">
+              <label><span class="name">Money Factor</span><span class="value" id="moneyFactorBVal">0.00250</span></label>
+              <input type="range" id="moneyFactorB" min="0" max="0.005" value="0.00250" step="0.00005"/>
+            </div>
+            <div class="field">
+              <label><span class="name">Lease Term</span><span class="value" id="leaseTermBVal">36 mo</span></label>
+              <select id="leaseTermB">
+                <option value="24">24 mo</option>
+                <option value="36" selected>36 mo</option>
+                <option value="39">39 mo</option>
+                <option value="48">48 mo</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label><span class="name">Residual %</span><span class="value" id="residualPctBVal">52%</span></label>
+              <input type="range" id="residualPctB" min="35" max="75" value="52" step="1"/>
+            </div>
+            <div class="field">
+              <label><span class="name">Cap Reduction</span><span class="value" id="capReductionBVal">$2,500</span></label>
+              <div class="num-input-wrap">
+                <span class="prefix">$</span>
+                <input type="number" id="capReductionB" value="2500" step="500"/>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="name">Mileage Allowance</span><span class="value" id="mileageAllowBVal">10,500</span></label>
+            <select id="mileageAllowB">
+              <option value="7500">7,500 mi/yr</option>
+              <option value="10000">10,000 mi/yr</option>
+              <option value="10500" selected>10,500 mi/yr</option>
+              <option value="12000">12,000 mi/yr</option>
+              <option value="15000">15,000 mi/yr</option>
+              <option value="20000">20,000 mi/yr</option>
+            </select>
+          </div>
+          <div class="payment-detail" id="leasePaymentDetailB">
+            <div class="pd-title">Monthly Payment Breakdown</div>
+            <div class="pd-row"><span class="label">Adj Cap Cost</span><span class="value" id="pdbAdjcap">$0</span></div>
+            <div class="pd-row"><span class="label">Residual</span><span class="value" id="pdbResidual">$0</span></div>
+            <div class="pd-row"><span class="label">Depreciation / mo</span><span class="value" id="pdbDep">$0</span></div>
+            <div class="pd-row"><span class="label">+ Finance Charge / mo</span><span class="value" id="pdbFin">$0</span></div>
+            <div class="pd-row total"><span class="label">Monthly Payment</span><span class="value" id="pdbLpmt">$0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vehicle-result">
+        <div class="total-line">
+          <span class="lbl">TOTAL · <span id="resultPeriodB">3 yrs</span></span>
+          <span class="val" id="totalB">—</span>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-stat">
+            <div class="lbl">Eff $/Mo</div>
+            <div class="val" id="effMonthlyB">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="lbl">$/Mile</div>
+            <div class="val" id="costPerMileB">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="lbl">Fuel/Yr</div>
+            <div class="val" id="fuelYrB">—</div>
+          </div>
+          <div class="mini-stat">
+            <div class="lbl">Equity</div>
+            <div class="val" id="equityB">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VERDICT -->
+  <div class="verdict fade-in" id="verdict">
+    <div class="verdict-grid">
+      <div>
+        <div class="eyebrow" id="verdictEyebrow">Cross-Vehicle Verdict · Annualized</div>
+        <h3 id="verdictText"><strong>Vehicle A</strong> wins this comparison</h3>
+      </div>
+      <div class="delta">
+        <div class="delta-amount" id="deltaAmount">$0</div>
+        <div class="delta-label" id="deltaLabel">annualized cost differential</div>
+      </div>
+    </div>
+    <div class="reasoning" id="verdictReasoning">Calculating optimal path…</div>
+
+    <div class="normalize-bar">
+      <div class="normalize-cell">
+        <div class="lbl">Annualized Cost</div>
+        <div class="row a"><span class="name">A</span><span class="val" id="annA">—</span></div>
+        <div class="row b"><span class="name">B</span><span class="val" id="annB">—</span></div>
+      </div>
+      <div class="normalize-cell">
+        <div class="lbl">Cost / Mile</div>
+        <div class="row a"><span class="name">A</span><span class="val" id="cpmA">—</span></div>
+        <div class="row b"><span class="name">B</span><span class="val" id="cpmB">—</span></div>
+      </div>
+      <div class="normalize-cell">
+        <div class="lbl">Effective $/Month</div>
+        <div class="row a"><span class="name">A</span><span class="val" id="effA">—</span></div>
+        <div class="row b"><span class="name">B</span><span class="val" id="effB">—</span></div>
+      </div>
+      <div class="normalize-cell">
+        <div class="lbl">Total (Period)</div>
+        <div class="row a"><span class="name">A</span><span class="val" id="totA">—</span></div>
+        <div class="row b"><span class="name">B</span><span class="val" id="totB">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <!-- NEGOTIATION TARGETS -->
+    <div class="negot-card">
+      <h3>Negotiation Reference Points</h3>
+      <div class="desc">Numbers to walk into the dealership with. These are model-derived targets and reasonable ranges based on your inputs.</div>
+      <div class="negot-grid">
+        <div class="negot-stat">
+          <div class="lbl">A · Discount Off MSRP</div>
+          <div class="val" id="negotDiscountA">—<span class="unit">%</span></div>
+          <div class="desc-small">Your negotiated price vs. MSRP</div>
+        </div>
+        <div class="negot-stat">
+          <div class="lbl">B · Discount Off MSRP</div>
+          <div class="val" id="negotDiscountB">—<span class="unit">%</span></div>
+          <div class="desc-small">Your negotiated price vs. MSRP</div>
+        </div>
+        <div class="negot-stat">
+          <div class="lbl">Money Factor → APR</div>
+          <div class="val" id="negotMfA">—<span class="unit">% APR-eq</span></div>
+          <div class="desc-small">A's MF expressed as APR</div>
+        </div>
+        <div class="negot-stat">
+          <div class="lbl">Money Factor → APR</div>
+          <div class="val" id="negotMfB">—<span class="unit">% APR-eq</span></div>
+          <div class="desc-small">B's MF expressed as APR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FULL BREAKDOWN -->
+    <div class="card">
+      <h3>SC-Calibrated Cost Breakdown</h3>
+      <div class="desc">Every cost component in plain view, calibrated for SC tax law. The winning column highlighted.</div>
+      <div style="overflow-x:auto;">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Cost Component</th>
+              <th id="thA">Vehicle A</th>
+              <th id="thB">Vehicle B</th>
+              <th>Differential</th>
+            </tr>
+          </thead>
+          <tbody id="compareTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="card">
+      <h3>Cost Trajectory</h3>
+      <div class="desc">Each vehicle plotted against its hold period (or unified timeline if toggled above). Switch between views to see different angles.</div>
+      <div class="chart-tabs">
+        <button class="active" data-chart="cumulative">Cumulative Cost</button>
+        <button data-chart="cumulativeNorm">Cost / Mile</button>
+        <button data-chart="equity">Net Equity</button>
+        <button data-chart="depreciation">Depreciation</button>
+        <button data-chart="fuel">Fuel/Energy</button>
+        <button data-chart="monthly">Monthly Outflow</button>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="card">
+      <h3>Strategic Signals</h3>
+      <div class="desc">Real-world flags raised by the model.</div>
+      <div class="insight-list" id="insightList"></div>
+    </div>
+
+    <footer>
+      <strong>South Carolina tax methodology —</strong> SC charges no sales tax on vehicles. Instead, the Infrastructure Maintenance Fee (IMF) is 5% of sale price <strong>capped at $500</strong>, paid once at registration on both purchases AND leases (S.C. Code § 56-3-627). Vehicles are subject to annual personal property tax: Fair Market Value × 6% assessment ratio × millage rate ÷ 1000. Greenville County millage typically falls between 300–360 mills depending on tax district. Property tax declines yearly as the vehicle depreciates per NADA values. Title fee = $15, plate/registration ≈ $40 (passenger), $60 (hybrid), $120 (EV — SC charges higher EV registration to recoup gas tax). Doc fees vary by dealer (typically $300–$700) and must be published annually by January 31. Lease acquisition fees ≈ $695, disposition fees ≈ $395. <strong>Always verify current rates with SCDMV and the Greenville County Auditor before signing.</strong>
+    </footer>
+  </div>
+</div>
+
+<!-- VIN MODAL -->
+<div class="modal" id="vinModal">
+  <div class="modal-content">
+    <h3>Decode VIN</h3>
+    <div class="desc">Paste a 17-character VIN. Queries NHTSA when online; falls back to offline manufacturer-prefix decoder if running locally (file://) or offline.</div>
+    <input type="text" id="vinInput" placeholder="1FTFW1ED5NFA12345" maxlength="17"/>
+    <div class="modal-status" id="vinStatus">Awaiting input...</div>
+    <div class="modal-actions">
+      <button id="vinCancel">Cancel</button>
+      <button class="primary" id="vinDecode">Decode</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE MODAL -->
+<div class="modal" id="saveModal">
+  <div class="modal-content">
+    <h3>Save Scenario</h3>
+    <div class="desc">Give this scenario a name. You can compare it to other saved scenarios from the saved bar.</div>
+    <input type="text" id="saveName" placeholder="e.g., F-150 Hybrid 6yr Buy"/>
+    <div class="modal-status" id="saveStatus">Ready to save…</div>
+    <div class="modal-actions">
+      <button id="saveCancel">Cancel</button>
+      <button class="primary" id="saveConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============= VEHICLE DATABASE =============
+const VEHICLE_DB = [
+  // FORD
+  { name: "Ford F-150 XLT (Gas)", make: "Ford", model: "F-150", year: 2025, class: "truck", powertrain: "gas", msrp: 48000, salePrice: 45500, residual36: 60, depRate: 0.13, mfTypical: 0.00210, mpg: 20, badges: ["truck"] },
+  { name: "Ford F-150 Hybrid (PowerBoost)", make: "Ford", model: "F-150 Hybrid", year: 2025, class: "truck", powertrain: "hybrid", msrp: 58000, salePrice: 55000, residual36: 62, depRate: 0.13, mfTypical: 0.00208, mpg: 24, badges: ["truck", "hybrid"] },
+  { name: "Ford F-150 Lightning (EV)", make: "Ford", model: "F-150 Lightning", year: 2025, class: "ev_truck", powertrain: "ev", msrp: 72000, salePrice: 68000, residual36: 52, depRate: 0.22, mfTypical: 0.00250, kwh100: 49, badges: ["truck", "ev"] },
+  { name: "Ford F-150 Raptor", make: "Ford", model: "F-150 Raptor", year: 2025, class: "truck", powertrain: "gas", msrp: 82000, salePrice: 80500, residual36: 65, depRate: 0.12, mfTypical: 0.00215, mpg: 16, badges: ["truck"] },
+  { name: "Ford Maverick Hybrid", make: "Ford", model: "Maverick Hybrid", year: 2025, class: "truck", powertrain: "hybrid", msrp: 28000, salePrice: 27500, residual36: 64, depRate: 0.11, mfTypical: 0.00195, mpg: 37, badges: ["truck", "hybrid"] },
+  { name: "Ford Bronco", make: "Ford", model: "Bronco", year: 2025, class: "suv", powertrain: "gas", msrp: 47000, salePrice: 45000, residual36: 60, depRate: 0.14, mfTypical: 0.00220, mpg: 19, badges: [] },
+  { name: "Ford Mustang Mach-E", make: "Ford", model: "Mustang Mach-E", year: 2025, class: "ev", powertrain: "ev", msrp: 47000, salePrice: 44000, residual36: 50, depRate: 0.21, mfTypical: 0.00240, kwh100: 35, badges: ["ev"] },
+  { name: "Chevrolet Silverado 1500 LT", make: "Chevrolet", model: "Silverado 1500", year: 2025, class: "truck", powertrain: "gas", msrp: 49000, salePrice: 46000, residual36: 58, depRate: 0.14, mfTypical: 0.00215, mpg: 19, badges: ["truck"] },
+  { name: "Chevrolet Silverado EV", make: "Chevrolet", model: "Silverado EV", year: 2025, class: "ev_truck", powertrain: "ev", msrp: 75000, salePrice: 72000, residual36: 50, depRate: 0.23, mfTypical: 0.00255, kwh100: 47, badges: ["truck", "ev"] },
+  { name: "GMC Sierra 1500 SLT", make: "GMC", model: "Sierra 1500", year: 2025, class: "truck", powertrain: "gas", msrp: 56000, salePrice: 53500, residual36: 60, depRate: 0.13, mfTypical: 0.00212, mpg: 19, badges: ["truck"] },
+  { name: "Chevrolet Tahoe", make: "Chevrolet", model: "Tahoe", year: 2025, class: "suv", powertrain: "gas", msrp: 60000, salePrice: 57000, residual36: 56, depRate: 0.15, mfTypical: 0.00220, mpg: 17, badges: [] },
+  { name: "Ram 1500 Big Horn", make: "Ram", model: "1500", year: 2025, class: "truck", powertrain: "gas", msrp: 50000, salePrice: 47000, residual36: 56, depRate: 0.15, mfTypical: 0.00225, mpg: 20, badges: ["truck"] },
+  { name: "Ram 1500 REV (EV)", make: "Ram", model: "1500 REV", year: 2025, class: "ev_truck", powertrain: "ev", msrp: 79000, salePrice: 76000, residual36: 50, depRate: 0.23, mfTypical: 0.00260, kwh100: 50, badges: ["truck", "ev"] },
+  { name: "Toyota Tacoma TRD", make: "Toyota", model: "Tacoma", year: 2025, class: "truck", powertrain: "gas", msrp: 42000, salePrice: 41000, residual36: 70, depRate: 0.10, mfTypical: 0.00180, mpg: 21, badges: ["truck"] },
+  { name: "Toyota Tundra Hybrid", make: "Toyota", model: "Tundra Hybrid", year: 2025, class: "truck", powertrain: "hybrid", msrp: 60000, salePrice: 58000, residual36: 65, depRate: 0.12, mfTypical: 0.00195, mpg: 22, badges: ["truck", "hybrid"] },
+  { name: "Toyota Camry Hybrid", make: "Toyota", model: "Camry Hybrid", year: 2025, class: "midsize", powertrain: "hybrid", msrp: 32000, salePrice: 31000, residual36: 60, depRate: 0.13, mfTypical: 0.00185, mpg: 51, badges: ["hybrid"] },
+  { name: "Toyota RAV4 Hybrid", make: "Toyota", model: "RAV4 Hybrid", year: 2025, class: "suv", powertrain: "hybrid", msrp: 35000, salePrice: 34500, residual36: 65, depRate: 0.11, mfTypical: 0.00180, mpg: 39, badges: ["hybrid"] },
+  { name: "Toyota Highlander", make: "Toyota", model: "Highlander", year: 2025, class: "suv", powertrain: "gas", msrp: 42000, salePrice: 40500, residual36: 60, depRate: 0.13, mfTypical: 0.00190, mpg: 24, badges: [] },
+  { name: "Toyota 4Runner", make: "Toyota", model: "4Runner", year: 2025, class: "suv", powertrain: "gas", msrp: 45000, salePrice: 44000, residual36: 68, depRate: 0.10, mfTypical: 0.00185, mpg: 17, badges: [] },
+  { name: "Honda Accord Hybrid", make: "Honda", model: "Accord Hybrid", year: 2025, class: "midsize", powertrain: "hybrid", msrp: 33000, salePrice: 32000, residual36: 58, depRate: 0.13, mfTypical: 0.00190, mpg: 48, badges: ["hybrid"] },
+  { name: "Honda CR-V Hybrid", make: "Honda", model: "CR-V Hybrid", year: 2025, class: "suv", powertrain: "hybrid", msrp: 35000, salePrice: 34000, residual36: 60, depRate: 0.12, mfTypical: 0.00185, mpg: 40, badges: ["hybrid"] },
+  { name: "Honda Pilot", make: "Honda", model: "Pilot", year: 2025, class: "suv", powertrain: "gas", msrp: 41000, salePrice: 39500, residual36: 56, depRate: 0.14, mfTypical: 0.00200, mpg: 22, badges: [] },
+  { name: "Tesla Model 3", make: "Tesla", model: "Model 3", year: 2025, class: "ev", powertrain: "ev", msrp: 42000, salePrice: 42000, residual36: 52, depRate: 0.20, mfTypical: 0.00230, kwh100: 25, badges: ["ev"] },
+  { name: "Tesla Model Y", make: "Tesla", model: "Model Y", year: 2025, class: "ev", powertrain: "ev", msrp: 48000, salePrice: 48000, residual36: 54, depRate: 0.19, mfTypical: 0.00225, kwh100: 28, badges: ["ev"] },
+  { name: "Tesla Model S", make: "Tesla", model: "Model S", year: 2025, class: "ev_luxury", powertrain: "ev", msrp: 80000, salePrice: 80000, residual36: 48, depRate: 0.22, mfTypical: 0.00245, kwh100: 30, badges: ["ev", "luxury"] },
+  { name: "Tesla Cybertruck", make: "Tesla", model: "Cybertruck", year: 2025, class: "ev_truck", powertrain: "ev", msrp: 82000, salePrice: 82000, residual36: 50, depRate: 0.21, mfTypical: 0.00250, kwh100: 49, badges: ["truck", "ev"] },
+  { name: "Rivian R1T", make: "Rivian", model: "R1T", year: 2025, class: "ev_truck", powertrain: "ev", msrp: 75000, salePrice: 73000, residual36: 50, depRate: 0.21, mfTypical: 0.00255, kwh100: 48, badges: ["truck", "ev"] },
+  { name: "Rivian R1S", make: "Rivian", model: "R1S", year: 2025, class: "ev_luxury", powertrain: "ev", msrp: 78000, salePrice: 76000, residual36: 52, depRate: 0.20, mfTypical: 0.00250, kwh100: 50, badges: ["ev", "luxury"] },
+  { name: "BMW X5 xDrive40i", make: "BMW", model: "X5", year: 2025, class: "luxury_suv", powertrain: "gas", msrp: 68000, salePrice: 65000, residual36: 56, depRate: 0.18, mfTypical: 0.00215, mpg: 23, badges: ["luxury"] },
+  { name: "BMW i4 (EV)", make: "BMW", model: "i4", year: 2025, class: "ev_luxury", powertrain: "ev", msrp: 56000, salePrice: 54000, residual36: 52, depRate: 0.21, mfTypical: 0.00235, kwh100: 28, badges: ["luxury", "ev"] },
+  { name: "Mercedes-Benz GLE 350", make: "Mercedes-Benz", model: "GLE 350", year: 2025, class: "luxury_suv", powertrain: "gas", msrp: 65000, salePrice: 62000, residual36: 55, depRate: 0.19, mfTypical: 0.00220, mpg: 21, badges: ["luxury"] },
+  { name: "Lexus RX 350", make: "Lexus", model: "RX 350", year: 2025, class: "luxury_suv", powertrain: "gas", msrp: 52000, salePrice: 50500, residual36: 60, depRate: 0.14, mfTypical: 0.00200, mpg: 24, badges: ["luxury"] },
+  { name: "Lexus RX 450h Hybrid", make: "Lexus", model: "RX 450h", year: 2025, class: "luxury_suv", powertrain: "hybrid", msrp: 56000, salePrice: 54500, residual36: 62, depRate: 0.13, mfTypical: 0.00195, mpg: 36, badges: ["luxury", "hybrid"] },
+  { name: "Audi Q5", make: "Audi", model: "Q5", year: 2025, class: "luxury_suv", powertrain: "gas", msrp: 50000, salePrice: 48000, residual36: 56, depRate: 0.18, mfTypical: 0.00215, mpg: 25, badges: ["luxury"] },
+  { name: "Porsche Macan", make: "Porsche", model: "Macan", year: 2025, class: "luxury_suv", powertrain: "gas", msrp: 65000, salePrice: 64000, residual36: 60, depRate: 0.16, mfTypical: 0.00205, mpg: 21, badges: ["luxury"] },
+  { name: "Honda Civic", make: "Honda", model: "Civic", year: 2025, class: "economy", powertrain: "gas", msrp: 26000, salePrice: 25500, residual36: 60, depRate: 0.13, mfTypical: 0.00185, mpg: 36, badges: [] },
+  { name: "Toyota Corolla", make: "Toyota", model: "Corolla", year: 2025, class: "economy", powertrain: "gas", msrp: 24000, salePrice: 23500, residual36: 60, depRate: 0.13, mfTypical: 0.00180, mpg: 35, badges: [] },
+  { name: "Honda Accord", make: "Honda", model: "Accord", year: 2025, class: "midsize", powertrain: "gas", msrp: 30000, salePrice: 29000, residual36: 56, depRate: 0.14, mfTypical: 0.00190, mpg: 33, badges: [] },
+  { name: "Hyundai Ioniq 5", make: "Hyundai", model: "Ioniq 5", year: 2025, class: "ev", powertrain: "ev", msrp: 45000, salePrice: 43000, residual36: 50, depRate: 0.21, mfTypical: 0.00235, kwh100: 30, badges: ["ev"] },
+  { name: "Kia EV6", make: "Kia", model: "EV6", year: 2025, class: "ev", powertrain: "ev", msrp: 47000, salePrice: 45000, residual36: 50, depRate: 0.21, mfTypical: 0.00235, kwh100: 29, badges: ["ev"] },
+];
+
+const CLASS_PROFILES = {
+  economy:    { insBase: 1100, maintMult: 0.85 },
+  midsize:    { insBase: 1400, maintMult: 1.00 },
+  suv:        { insBase: 1500, maintMult: 1.05 },
+  luxury_suv: { insBase: 2400, maintMult: 1.55 },
+  truck:      { insBase: 1700, maintMult: 1.10 },
+  ev:         { insBase: 1800, maintMult: 1.00 },
+  ev_truck:   { insBase: 2000, maintMult: 1.10 },
+  ev_luxury:  { insBase: 2600, maintMult: 1.30 },
+};
+
+const POWERTRAIN_MAINT = {
+  gas: 1.00,
+  hybrid: 0.85,
+  ev: 0.60
+};
+
+// SC-specific constants
+const SC_IMF_RATE = 0.05;
+const SC_IMF_CAP = 500;
+const SC_TITLE_FEE = 15;
+const SC_PLATE_FEE = { gas: 40, hybrid: 60, ev: 120 };
+const SC_ASSESSMENT_RATIO = 0.06;
+const LEASE_ACQ_FEE = 695;
+const LEASE_DISP_FEE = 395;
+
+// ============= STATE =============
+const state = {
+  millage: 320,
+  investReturn: 7,
+  businessUse: 0,
+  gasPrice: 3.10,
+  elecPrice: 0.16,
+  docFee: 499,
+  compareMode: 'natural', // 'natural' or 'unified'
+
+  a: {
+    mode: 'buy',
+    name: "Ford F-150 Hybrid",
+    class: 'truck', powertrain: 'hybrid',
+    msrp: 58000, salePrice: 55000,
+    holdYears: 6, annualMiles: 12000,
+    mpg: 24, kwh100: 0,
+    downPayment: 5000, loanApr: 6.5, loanTerm: 60,
+    moneyFactor: 0.00208, leaseTerm: 36, residualPct: 62, capReduction: 2500, mileageAllow: 12000,
+    depRate: 0.13
+  },
+  b: {
+    mode: 'lease',
+    name: "Ford F-150 Lightning",
+    class: 'ev_truck', powertrain: 'ev',
+    msrp: 72000, salePrice: 68000,
+    holdYears: 3, annualMiles: 7000,
+    mpg: 0, kwh100: 49,
+    downPayment: 5000, loanApr: 6.5, loanTerm: 60,
+    moneyFactor: 0.00250, leaseTerm: 36, residualPct: 52, capReduction: 2500, mileageAllow: 10500,
+    depRate: 0.22
+  },
+
+  savedScenarios: []
+};
+
+// ============= UTILS =============
+const fmt = (n) => '$' + Math.round(n).toLocaleString('en-US');
+const fmtPrecise = (n) => '$' + n.toFixed(2);
+const fmtMi = (n) => Math.round(n).toLocaleString('en-US');
+
+// ============= INPUT BINDINGS =============
+function bindShared() {
+  ['millage', 'investReturn', 'businessUse', 'gasPrice', 'elecPrice', 'docFee'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      state[id] = parseFloat(el.value);
+      updateSharedLabels();
+      recompute();
+    });
+  });
+}
+
+function bindVehicleSide(side) {
+  const fields = ['msrp', 'salePrice', 'holdYears', 'annualMiles', 'downPayment', 'loanApr', 'loanTerm', 'moneyFactor', 'leaseTerm', 'residualPct', 'capReduction', 'mileageAllow', 'mpg', 'kwh100'];
+  const idMap = { kwh100: 'kwh' + side.toUpperCase() };
+  fields.forEach(field => {
+    const elId = idMap[field] || (field + side.toUpperCase());
+    const el = document.getElementById(elId);
+    if (el) {
+      el.addEventListener('input', () => {
+        state[side][field] = parseFloat(el.value);
+        updateVehicleLabels(side);
+        recompute();
+      });
+    }
+  });
+  const panel = document.querySelector(`.vehicle-panel.${side}`);
+  panel.querySelectorAll('.mode-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      panel.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state[side].mode = btn.dataset.mode;
+      togglePanelMode(side);
+      recompute();
+    });
+  });
+}
+
+function togglePanelMode(side) {
+  const panel = document.querySelector(`.vehicle-panel.${side}`);
+  panel.querySelector('.buy-fields').style.display = state[side].mode === 'buy' ? 'block' : 'none';
+  panel.querySelector('.lease-fields').style.display = state[side].mode === 'lease' ? 'block' : 'none';
+}
+
+function togglePowertrainFields(side) {
+  const isEv = state[side].powertrain === 'ev';
+  document.getElementById('mpgField' + side.toUpperCase()).style.display = isEv ? 'none' : 'block';
+  document.getElementById('kwhField' + side.toUpperCase()).style.display = isEv ? 'block' : 'none';
+}
+
+function updateSharedLabels() {
+  document.getElementById('millageVal').textContent = state.millage;
+  document.getElementById('investReturnVal').textContent = state.investReturn.toFixed(2) + '%';
+  document.getElementById('businessUseVal').textContent = state.businessUse + '%';
+  document.getElementById('gasPriceVal').textContent = '$' + state.gasPrice.toFixed(2);
+  document.getElementById('elecPriceVal').textContent = '$' + state.elecPrice.toFixed(2);
+  document.getElementById('docFeeVal').textContent = fmt(state.docFee);
+}
+
+function updateVehicleLabels(side) {
+  const s = state[side];
+  const S = side.toUpperCase();
+  document.getElementById('msrp' + S + 'Val').textContent = fmt(s.msrp);
+  document.getElementById('salePrice' + S + 'Val').textContent = fmt(s.salePrice);
+  document.getElementById('holdYears' + S + 'Val').textContent = s.holdYears + ' yrs';
+  document.getElementById('annualMiles' + S + 'Val').textContent = fmtMi(s.annualMiles);
+  document.getElementById('downPayment' + S + 'Val').textContent = fmt(s.downPayment);
+  document.getElementById('loanApr' + S + 'Val').textContent = s.loanApr.toFixed(2) + '%';
+  document.getElementById('loanTerm' + S + 'Val').textContent = s.loanTerm + ' mo';
+  document.getElementById('moneyFactor' + S + 'Val').textContent = s.moneyFactor.toFixed(5);
+  document.getElementById('leaseTerm' + S + 'Val').textContent = s.leaseTerm + ' mo';
+  document.getElementById('residualPct' + S + 'Val').textContent = s.residualPct + '%';
+  document.getElementById('capReduction' + S + 'Val').textContent = fmt(s.capReduction);
+  document.getElementById('mileageAllow' + S + 'Val').textContent = fmtMi(s.mileageAllow);
+  document.getElementById('mpg' + S + 'Val').textContent = s.mpg + ' MPG';
+  document.getElementById('kwh' + S + 'Val').textContent = s.kwh100 + ' kWh/100mi';
+}
+
+// ============= SEARCH =============
+document.querySelectorAll('.vehicle-search').forEach(input => {
+  const side = input.dataset.side;
+  const resultsEl = document.querySelector(`.search-results[data-side="${side}"]`);
+  input.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    if (q.length < 2) { resultsEl.classList.remove('open'); return; }
+    const matches = VEHICLE_DB.filter(v =>
+      v.name.toLowerCase().includes(q) ||
+      v.make.toLowerCase().includes(q) ||
+      v.model.toLowerCase().includes(q)
+    ).slice(0, 12);
+    if (matches.length === 0) {
+      resultsEl.innerHTML = '<div class="search-result"><div class="name" style="color:var(--text-faint)">No matches</div></div>';
+    } else {
+      resultsEl.innerHTML = matches.map(v => {
+        const badges = v.badges.map(b => `<span class="badge ${b}">${b}</span>`).join('');
+        const econ = v.powertrain === 'ev' ? `${v.kwh100} kWh/100mi` : `${v.mpg} MPG`;
+        return `<div class="search-result" data-name="${v.name}"><div class="name">${v.name} ${badges}</div><div class="detail">${v.year} · ${fmt(v.msrp)} · ${econ} · ${v.residual36}% RV</div></div>`;
+      }).join('');
+    }
+    resultsEl.classList.add('open');
+  });
+  input.addEventListener('blur', () => setTimeout(() => resultsEl.classList.remove('open'), 200));
+  input.addEventListener('focus', () => { if (input.value.length >= 2) resultsEl.classList.add('open'); });
+  resultsEl.addEventListener('click', (e) => {
+    const result = e.target.closest('.search-result');
+    if (!result || !result.dataset.name) return;
+    const veh = VEHICLE_DB.find(v => v.name === result.dataset.name);
+    if (veh) loadVehicle(side, veh);
+    resultsEl.classList.remove('open');
+    input.value = '';
+  });
+});
+
+function loadVehicle(side, veh) {
+  const s = state[side];
+  s.name = veh.name;
+  s.class = veh.class;
+  s.msrp = veh.msrp;
+  s.salePrice = veh.salePrice;
+  s.residualPct = veh.residual36;
+  s.depRate = veh.depRate;
+  s.moneyFactor = veh.mfTypical;
+  s.powertrain = veh.powertrain;
+  s.mpg = veh.mpg || 0;
+  s.kwh100 = veh.kwh100 || 0;
+
+  const S = side.toUpperCase();
+  document.getElementById('msrp' + S).value = veh.msrp;
+  document.getElementById('salePrice' + S).value = veh.salePrice;
+  document.getElementById('residualPct' + S).value = veh.residual36;
+  document.getElementById('moneyFactor' + S).value = veh.mfTypical;
+  document.getElementById('mpg' + S).value = veh.mpg || 0;
+  document.getElementById('kwh' + S).value = veh.kwh100 || 0;
+
+  document.getElementById('name' + S).textContent = veh.name;
+  const econ = veh.powertrain === 'ev' ? `${veh.kwh100} kWh/100mi` : `${veh.mpg} MPG`;
+  document.getElementById('meta' + S).textContent = `${veh.year} · ${veh.class.replace('_', ' ').toUpperCase()} · ${veh.powertrain.toUpperCase()} · ${econ}`;
+
+  togglePowertrainFields(side);
+  updateVehicleLabels(side);
+  recompute();
+}
+
+// ============= VIN =============
+let activeVinSide = null;
+const vinModal = document.getElementById('vinModal');
+const vinInput = document.getElementById('vinInput');
+const vinStatus = document.getElementById('vinStatus');
+
+document.querySelectorAll('.vin-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeVinSide = btn.dataset.side;
+    vinInput.value = '';
+    vinStatus.textContent = 'Awaiting input...';
+    vinStatus.className = 'modal-status';
+    vinModal.classList.add('open');
+    setTimeout(() => vinInput.focus(), 100);
+  });
+});
+document.getElementById('vinCancel').addEventListener('click', () => vinModal.classList.remove('open'));
+vinModal.addEventListener('click', (e) => { if (e.target === vinModal) vinModal.classList.remove('open'); });
+document.getElementById('vinDecode').addEventListener('click', decodeVin);
+vinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') decodeVin(); });
+
+// VIN character validation
+function isValidVinFormat(vin) {
+  if (vin.length !== 17) return false;
+  return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
+}
+
+// VIN year decoding from 10th digit
+const VIN_YEAR_MAP = {
+  'A': 2010, 'B': 2011, 'C': 2012, 'D': 2013, 'E': 2014, 'F': 2015, 'G': 2016,
+  'H': 2017, 'J': 2018, 'K': 2019, 'L': 2020, 'M': 2021, 'N': 2022, 'P': 2023,
+  'R': 2024, 'S': 2025, 'T': 2026, 'V': 2027, 'W': 2028, 'X': 2029, 'Y': 2030,
+  '1': 2001, '2': 2002, '3': 2003, '4': 2004, '5': 2005, '6': 2006, '7': 2007,
+  '8': 2008, '9': 2009
+};
+
+// World Manufacturer Identifier (first 3 chars) → maker info
+// Plus extended pattern matching using positions 4-8 (vehicle descriptor)
+const WMI_MAP = {
+  // FORD
+  '1FT': { make: 'Ford', type: 'truck' },     // F-Series trucks
+  '1FA': { make: 'Ford', type: 'car' },       // Cars (Mustang, etc.)
+  '1FM': { make: 'Ford', type: 'suv' },       // SUVs (Explorer, Expedition)
+  '1FD': { make: 'Ford', type: 'truck' },     // Trucks (E-Series, F-Series HD)
+  '1FB': { make: 'Ford', type: 'van' },       // Vans
+  '1FC': { make: 'Ford', type: 'van' },
+  '3FA': { make: 'Ford', type: 'car' },       // Mexico Ford cars
+  '3FM': { make: 'Ford', type: 'suv' },       // Mexico Ford SUVs
+  '2FM': { make: 'Ford', type: 'suv' },       // Canada Ford SUVs
+  '2FT': { make: 'Ford', type: 'truck' },     // Canada Ford trucks
+  // CHEVROLET
+  '1G1': { make: 'Chevrolet', type: 'car' },
+  '1GC': { make: 'Chevrolet', type: 'truck' },
+  '1GN': { make: 'Chevrolet', type: 'suv' },
+  '3GN': { make: 'Chevrolet', type: 'suv' },
+  '2G1': { make: 'Chevrolet', type: 'car' },
+  '3G1': { make: 'Chevrolet', type: 'car' },
+  // GMC
+  '1GT': { make: 'GMC', type: 'truck' },
+  '1GK': { make: 'GMC', type: 'suv' },
+  '3GT': { make: 'GMC', type: 'truck' },
+  // RAM / DODGE / CHRYSLER
+  '1C6': { make: 'Ram', type: 'truck' },
+  '3C6': { make: 'Ram', type: 'truck' },
+  '1C4': { make: 'Jeep', type: 'suv' },
+  '1C3': { make: 'Chrysler', type: 'car' },
+  // TOYOTA
+  '5TF': { make: 'Toyota', type: 'truck' },   // Tundra, Tacoma
+  '4T1': { make: 'Toyota', type: 'car' },     // Camry
+  '5YF': { make: 'Toyota', type: 'car' },     // Corolla
+  '2T3': { make: 'Toyota', type: 'suv' },     // RAV4
+  '5TD': { make: 'Toyota', type: 'suv' },     // Highlander, Sienna
+  'JTM': { make: 'Toyota', type: 'suv' },
+  'JTE': { make: 'Toyota', type: 'suv' },
+  // HONDA
+  '1HG': { make: 'Honda', type: 'car' },      // Civic, Accord
+  '2HG': { make: 'Honda', type: 'car' },
+  '5J6': { make: 'Honda', type: 'suv' },      // CR-V
+  '5FN': { make: 'Honda', type: 'suv' },      // Pilot, Odyssey
+  '5FP': { make: 'Honda', type: 'truck' },    // Ridgeline
+  // TESLA
+  '5YJ': { make: 'Tesla', type: 'ev' },
+  '7SA': { make: 'Tesla', type: 'ev' },
+  // RIVIAN
+  '7PD': { make: 'Rivian', type: 'ev_truck' },
+  // HYUNDAI / KIA
+  'KMH': { make: 'Hyundai', type: 'car' },
+  'KM8': { make: 'Hyundai', type: 'suv' },
+  '5NM': { make: 'Hyundai', type: 'suv' },
+  '5NP': { make: 'Hyundai', type: 'car' },
+  'KNA': { make: 'Kia', type: 'car' },
+  'KND': { make: 'Kia', type: 'suv' },
+  'KNB': { make: 'Kia', type: 'suv' },
+  // BMW
+  'WBA': { make: 'BMW', type: 'car' },
+  'WBS': { make: 'BMW', type: 'car' },
+  'WBX': { make: 'BMW', type: 'suv' },
+  '5UX': { make: 'BMW', type: 'suv' },
+  '5YM': { make: 'BMW', type: 'suv' },
+  // MERCEDES
+  'WDD': { make: 'Mercedes-Benz', type: 'car' },
+  'WDC': { make: 'Mercedes-Benz', type: 'suv' },
+  '4JG': { make: 'Mercedes-Benz', type: 'suv' },
+  // AUDI
+  'WAU': { make: 'Audi', type: 'car' },
+  'WA1': { make: 'Audi', type: 'suv' },
+  // PORSCHE
+  'WP0': { make: 'Porsche', type: 'car' },
+  'WP1': { make: 'Porsche', type: 'suv' },
+  // LEXUS
+  'JTH': { make: 'Lexus', type: 'car' },
+  'JTJ': { make: 'Lexus', type: 'suv' },
+  '2T2': { make: 'Lexus', type: 'suv' },
+  '5TD': { make: 'Lexus', type: 'suv' },
+};
+
+// Ford F-Series sub-decoder using positions 5-7 (sometimes positions 4-8)
+function decodeFordFSeries(vin) {
+  // Position 5-7 typically encode the model line and fuel type
+  // FW = F-150, FX = Heritage variants, similar
+  const pos45 = vin.substring(3, 5);
+  const pos5 = vin[4];
+  const pos6 = vin[5];
+  const pos7 = vin[6];
+
+  // Common F-150 patterns:
+  // 1FTFW1xxx = F-150 4x4 SuperCrew
+  // 1FTEW1xxx = F-150 4x2 SuperCrew
+  // 1FTFW5Lxx = F-150 4x4 (newer codes use L for Lightning OR Lariat - need more bits)
+  // 1FT8W2xxx = F-250
+  // 1FT8W3xxx = F-350
+
+  // Check 4th char for series (F = F-150 family, 7/8 = F-250/350)
+  if (pos45 === 'TF' || pos45 === 'TE') {
+    // F-150 line — now check for hybrid/EV indicators
+    // Position 6 ('1' for gas, '5' often hybrid/PowerBoost in newer years, 'L' for Lightning)
+    // This is approximate — Ford rotates these codes
+    if (pos6 === 'L' && pos5 === 'W') {
+      // 'L' in position 6 + W in pos 5 = often Lightning EV (needs verification)
+      // Be conservative — flag as possible Lightning OR Lariat trim
+      return { model: 'F-150', subType: 'unknown_powertrain' };
+    }
+    return { model: 'F-150', subType: 'gas' };
+  }
+  if (vin.substring(3, 6) === 'T8W' || vin.substring(3, 6) === 'T7W') {
+    return { model: 'F-250/350', subType: 'gas' };
+  }
+  return { model: 'F-Series', subType: 'gas' };
+}
+
+// Decode VIN using only WMI/static lookup (no API)
+function decodeVinOffline(vin) {
+  const wmi = vin.substring(0, 3);
+  const yearChar = vin[9];
+  const year = VIN_YEAR_MAP[yearChar] || null;
+
+  // Year disambiguation: the same letter cycles every 30 years.
+  // Position 7 being a letter (not digit) typically indicates 2010+
+  // For now, we trust the basic map and let user adjust if wrong.
+
+  let info = WMI_MAP[wmi];
+
+  // Extended Ford F-Series check
+  if (info && info.make === 'Ford' && info.type === 'truck') {
+    const fSeries = decodeFordFSeries(vin);
+    info = { ...info, model: fSeries.model, subType: fSeries.subType };
+  }
+
+  if (!info) return null;
+
+  return {
+    make: info.make,
+    model: info.model || '',
+    type: info.type,
+    subType: info.subType || '',
+    year: year,
+    source: 'offline'
+  };
+}
+
+// Main VIN decoder — tries API first, falls back to offline
+async function decodeVin() {
+  const vin = vinInput.value.trim().toUpperCase();
+
+  if (vin.length === 0) {
+    vinStatus.textContent = 'Please enter a VIN.';
+    vinStatus.className = 'modal-status error';
+    return;
+  }
+  if (vin.length !== 17) {
+    vinStatus.textContent = `VIN must be exactly 17 characters (you entered ${vin.length}).`;
+    vinStatus.className = 'modal-status error';
+    return;
+  }
+  if (!isValidVinFormat(vin)) {
+    vinStatus.textContent = 'VIN contains invalid characters. VINs use letters A-Z (except I, O, Q) and digits 0-9.';
+    vinStatus.className = 'modal-status error';
+    return;
+  }
+
+  // Detect file:// protocol up front — fetch will always fail there
+  const isFileProtocol = window.location.protocol === 'file:';
+
+  let apiSucceeded = false;
+  let apiData = null;
+
+  if (!isFileProtocol) {
+    vinStatus.textContent = 'Querying NHTSA database...';
+    vinStatus.className = 'modal-status';
+
+    try {
+      const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevinvalues/${vin}?format=json`);
+      if (res.ok) {
+        const data = await res.json();
+        const r = data.Results && data.Results[0];
+        if (r && (r.Make || r.Model)) {
+          apiData = r;
+          apiSucceeded = true;
+        }
+      }
+    } catch (err) {
+      console.warn('NHTSA fetch failed, falling back to offline decoder:', err.message);
+      // Fall through to offline mode
+    }
+  }
+
+  if (apiSucceeded) {
+    handleApiDecodeResult(vin, apiData);
+  } else {
+    handleOfflineDecode(vin, isFileProtocol);
+  }
+}
+
+function handleApiDecodeResult(vin, r) {
+  const errorCode = r.ErrorCode || '';
+  const errorText = r.ErrorText || '';
+  const make = r.Make || '';
+  const model = r.Model || '';
+  const year = r.ModelYear || '';
+
+  if (!make && !model) {
+    vinStatus.innerHTML = `<span style="color:var(--danger)">✗ Unable to decode VIN.</span><br/><span style="color:var(--text-faint)">${errorText || 'NHTSA could not identify this vehicle.'}</span>`;
+    vinStatus.className = 'modal-status error';
+    return;
+  }
+
+  const trim = r.Trim || '';
+  const fuel = r.FuelTypePrimary || '';
+  const fuel2 = r.FuelTypeSecondary || '';
+  const bodyClass = r.BodyClass || '';
+  const electrification = r.ElectrificationLevel || '';
+
+  let statusHtml = `<span style="color:var(--accent-2)">✓ Decoded:</span> ${year} ${make} ${model}${trim ? ' ' + trim : ''}`;
+  if (bodyClass || fuel) {
+    statusHtml += `<br/><span style="color:var(--text-faint)">${bodyClass}${fuel ? ' · ' + fuel : ''}${fuel2 ? '/' + fuel2 : ''}</span>`;
+  }
+  if (errorCode === '1') {
+    statusHtml += `<br/><span style="color:var(--gold)">⚠ Check digit warning — data still valid.</span>`;
+  }
+  vinStatus.innerHTML = statusHtml;
+  vinStatus.className = 'modal-status success';
+
+  // DB matching (same logic as before)
+  let dbMatch = null;
+  const makeNorm = make.toLowerCase();
+  const modelFirstWord = model.toLowerCase().split(' ')[0];
+  const isHybrid = (electrification && electrification.toLowerCase().includes('hev')) ||
+                    (fuel2 && fuel2.toLowerCase().includes('electric')) ||
+                    (model.toLowerCase().includes('hybrid'));
+  const isEv = fuel.toLowerCase().includes('electric') && !fuel.toLowerCase().includes('gas');
+
+  if (isHybrid) {
+    dbMatch = VEHICLE_DB.find(v =>
+      v.make.toLowerCase() === makeNorm &&
+      v.model.toLowerCase().includes(modelFirstWord) &&
+      v.powertrain === 'hybrid'
+    );
+  }
+  if (!dbMatch && isEv) {
+    dbMatch = VEHICLE_DB.find(v =>
+      v.make.toLowerCase() === makeNorm &&
+      v.model.toLowerCase().includes(modelFirstWord) &&
+      v.powertrain === 'ev'
+    );
+  }
+  if (!dbMatch) {
+    dbMatch = VEHICLE_DB.find(v =>
+      v.make.toLowerCase() === makeNorm &&
+      v.model.toLowerCase().includes(modelFirstWord) &&
+      v.powertrain === 'gas'
+    );
+  }
+  if (!dbMatch) {
+    dbMatch = VEHICLE_DB.find(v =>
+      v.make.toLowerCase() === makeNorm &&
+      v.model.toLowerCase().includes(modelFirstWord)
+    );
+  }
+
+  applyDecodeResult(dbMatch, {
+    year, make, model, trim, bodyClass, fuel,
+    isEv, isHybrid,
+    customName: `${year} ${make} ${model}${trim ? ' ' + trim : ''}`
+  });
+}
+
+function handleOfflineDecode(vin, isFileProtocol) {
+  const decoded = decodeVinOffline(vin);
+
+  if (!decoded) {
+    let msg;
+    if (isFileProtocol) {
+      msg = `<span style="color:var(--gold)">⚠ Running locally (file://). NHTSA API blocked by browser.</span><br/><span style="color:var(--text-faint)">VIN prefix "${vin.substring(0,3)}" not in offline database. Use search instead, or open this file via a local web server (e.g. <code>python3 -m http.server</code>) to enable VIN API.</span>`;
+    } else {
+      msg = `<span style="color:var(--danger)">✗ NHTSA unreachable and VIN prefix "${vin.substring(0,3)}" not in offline database.</span><br/><span style="color:var(--text-faint)">Use the search field instead, or check your network.</span>`;
+    }
+    vinStatus.innerHTML = msg;
+    vinStatus.className = 'modal-status error';
+    return;
+  }
+
+  const { make, model, type, subType, year } = decoded;
+
+  let statusHtml = `<span style="color:var(--accent-2)">✓ Offline decode:</span> ${year || '20??'} ${make}${model ? ' ' + model : ''}`;
+  if (isFileProtocol) {
+    statusHtml += `<br/><span style="color:var(--gold)">⚠ Running locally — using offline VIN decoder (WMI lookup). NHTSA API blocked by browser file:// security.</span>`;
+  } else {
+    statusHtml += `<br/><span style="color:var(--gold)">⚠ NHTSA unreachable — using offline decoder fallback.</span>`;
+  }
+  if (subType === 'unknown_powertrain') {
+    statusHtml += `<br/><span style="color:var(--gold)">Note: This Ford F-150 VIN pattern could be either a Lightning EV or Lariat trim — please verify and adjust the powertrain manually if needed.</span>`;
+  }
+  vinStatus.innerHTML = statusHtml;
+  vinStatus.className = 'modal-status success';
+
+  // Try DB match
+  let dbMatch = null;
+  if (make && model) {
+    const makeNorm = make.toLowerCase();
+    const modelFirstWord = model.toLowerCase().split(' ')[0];
+    // Prefer the gas variant for offline mode unless we explicitly know it's EV
+    if (type === 'ev' || type === 'ev_truck') {
+      dbMatch = VEHICLE_DB.find(v =>
+        v.make.toLowerCase() === makeNorm &&
+        v.model.toLowerCase().includes(modelFirstWord) &&
+        (v.powertrain === 'ev')
+      );
+    }
+    if (!dbMatch) {
+      dbMatch = VEHICLE_DB.find(v =>
+        v.make.toLowerCase() === makeNorm &&
+        v.model.toLowerCase().includes(modelFirstWord) &&
+        v.powertrain === 'gas'
+      );
+    }
+    if (!dbMatch) {
+      dbMatch = VEHICLE_DB.find(v =>
+        v.make.toLowerCase() === makeNorm &&
+        v.model.toLowerCase().includes(modelFirstWord)
+      );
+    }
+  }
+
+  applyDecodeResult(dbMatch, {
+    year: year || '20??',
+    make, model, trim: '',
+    bodyClass: '',
+    fuel: type === 'ev' || type === 'ev_truck' ? 'Electric' : 'Gasoline',
+    isEv: type === 'ev' || type === 'ev_truck',
+    isHybrid: false,
+    customName: `${year || ''} ${make}${model ? ' ' + model : ''}`.trim()
+  });
+}
+
+function applyDecodeResult(dbMatch, info) {
+  setTimeout(() => {
+    if (dbMatch) {
+      loadVehicle(activeVinSide, dbMatch);
+      vinStatus.innerHTML += `<br/><span style="color:var(--accent-a)">→ Matched: ${dbMatch.name}. Pricing & specs loaded from database.</span>`;
+      setTimeout(() => vinModal.classList.remove('open'), 2000);
+    } else {
+      // Class-inferred defaults
+      const inferredClass = inferClass(info.bodyClass, info.fuel);
+      const inferred = inferDefaults(inferredClass, info.isEv);
+      const S = activeVinSide.toUpperCase();
+      const s = state[activeVinSide];
+      s.name = info.customName;
+      s.class = inferredClass;
+      s.msrp = inferred.msrp;
+      s.salePrice = inferred.salePrice;
+      s.residualPct = inferred.residualPct;
+      s.depRate = inferred.depRate;
+      s.moneyFactor = inferred.moneyFactor;
+      s.mpg = inferred.mpg;
+      s.kwh100 = inferred.kwh100;
+      s.powertrain = info.isEv ? 'ev' : (info.isHybrid ? 'hybrid' : 'gas');
+
+      document.getElementById('msrp' + S).value = inferred.msrp;
+      document.getElementById('salePrice' + S).value = inferred.salePrice;
+      document.getElementById('residualPct' + S).value = inferred.residualPct;
+      document.getElementById('moneyFactor' + S).value = inferred.moneyFactor;
+      document.getElementById('mpg' + S).value = inferred.mpg || 24;
+      document.getElementById('kwh' + S).value = inferred.kwh100 || 30;
+      document.getElementById('name' + S).textContent = info.customName;
+      const econ = s.powertrain === 'ev' ? `${s.kwh100} kWh/100mi` : `${s.mpg} MPG`;
+      document.getElementById('meta' + S).textContent = `${info.year} · ${inferredClass.replace('_', ' ').toUpperCase()} · ${s.powertrain.toUpperCase()} · ${econ} · ESTIMATED`;
+      togglePowertrainFields(activeVinSide);
+      updateVehicleLabels(activeVinSide);
+      recompute();
+      vinStatus.innerHTML += `<br/><span style="color:var(--gold)">→ Class-inferred defaults applied. Verify MSRP and adjust manually.</span>`;
+      setTimeout(() => vinModal.classList.remove('open'), 3500);
+    }
+  }, 400);
+}
+
+function inferClass(bodyClass, fuel) {
+  const isEv = fuel && fuel.toLowerCase().includes('electric') && !fuel.toLowerCase().includes('gas');
+  const bc = (bodyClass || '').toLowerCase();
+  if (bc.includes('truck') || bc.includes('pickup')) return isEv ? 'ev_truck' : 'truck';
+  if (bc.includes('suv') || bc.includes('multi-purpose') || bc.includes('sport utility')) return isEv ? 'ev_luxury' : 'suv';
+  if (bc.includes('coupe') || bc.includes('convertible')) return isEv ? 'ev_luxury' : 'luxury_suv';
+  if (isEv) return 'ev';
+  if (bc.includes('sedan')) return 'midsize';
+  return 'midsize';
+}
+
+function inferDefaults(cls, isEv) {
+  const presets = {
+    economy:    { msrp: 26000, salePrice: 25000, residualPct: 58, depRate: 0.13, moneyFactor: 0.00185, mpg: 33, kwh100: 0 },
+    midsize:    { msrp: 35000, salePrice: 33500, residualPct: 56, depRate: 0.14, moneyFactor: 0.00200, mpg: 30, kwh100: 0 },
+    suv:        { msrp: 45000, salePrice: 43000, residualPct: 58, depRate: 0.13, moneyFactor: 0.00200, mpg: 24, kwh100: 0 },
+    luxury_suv: { msrp: 60000, salePrice: 57500, residualPct: 56, depRate: 0.18, moneyFactor: 0.00215, mpg: 22, kwh100: 0 },
+    truck:      { msrp: 50000, salePrice: 47500, residualPct: 60, depRate: 0.13, moneyFactor: 0.00210, mpg: 20, kwh100: 0 },
+    ev:         { msrp: 45000, salePrice: 43000, residualPct: 50, depRate: 0.21, moneyFactor: 0.00235, mpg: 0, kwh100: 30 },
+    ev_truck:   { msrp: 70000, salePrice: 67000, residualPct: 50, depRate: 0.22, moneyFactor: 0.00250, mpg: 0, kwh100: 49 },
+    ev_luxury:  { msrp: 80000, salePrice: 77000, residualPct: 50, depRate: 0.22, moneyFactor: 0.00240, mpg: 0, kwh100: 32 },
+  };
+  return presets[cls] || presets.midsize;
+}
+
+// ============= SAVE/LOAD SCENARIOS =============
+const saveModal = document.getElementById('saveModal');
+const saveName = document.getElementById('saveName');
+const saveStatus = document.getElementById('saveStatus');
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  saveName.value = `${state.a.name} (${state.a.mode}) vs ${state.b.name} (${state.b.mode})`;
+  saveStatus.textContent = 'Ready to save…';
+  saveStatus.className = 'modal-status';
+  saveModal.classList.add('open');
+  setTimeout(() => saveName.focus(), 100);
+});
+document.getElementById('saveCancel').addEventListener('click', () => saveModal.classList.remove('open'));
+saveModal.addEventListener('click', (e) => { if (e.target === saveModal) saveModal.classList.remove('open'); });
+document.getElementById('saveConfirm').addEventListener('click', confirmSave);
+saveName.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmSave(); });
+
+function confirmSave() {
+  const name = saveName.value.trim();
+  if (!name) { saveStatus.textContent = 'Name required.'; saveStatus.className = 'modal-status error'; return; }
+  const a = computeVehicle('a');
+  const b = computeVehicle('b');
+  state.savedScenarios.push({
+    name,
+    snapshot: JSON.parse(JSON.stringify({ a: state.a, b: state.b, millage: state.millage, investReturn: state.investReturn, gasPrice: state.gasPrice, elecPrice: state.elecPrice, docFee: state.docFee })),
+    summary: { totalA: a.total, totalB: b.total, annA: a.annualized, annB: b.annualized }
+  });
+  renderSavedScenarios();
+  saveModal.classList.remove('open');
+}
+
+function renderSavedScenarios() {
+  const wrapper = document.getElementById('savedScenarios');
+  const list = document.getElementById('savedList');
+  if (state.savedScenarios.length === 0) {
+    wrapper.classList.remove('has-items');
+    return;
+  }
+  wrapper.classList.add('has-items');
+  list.innerHTML = state.savedScenarios.map((sc, i) => `
+    <div class="saved-chip">
+      <span class="name">${sc.name}</span>
+      <span class="cost">A: ${fmt(sc.summary.totalA)} · B: ${fmt(sc.summary.totalB)}</span>
+      <button class="load" data-idx="${i}" title="Load scenario">↻</button>
+      <button data-del="${i}" title="Delete">×</button>
+    </div>
+  `).join('');
+  list.querySelectorAll('button[data-del]').forEach(b => {
+    b.addEventListener('click', () => {
+      state.savedScenarios.splice(parseInt(b.dataset.del), 1);
+      renderSavedScenarios();
+    });
+  });
+  list.querySelectorAll('button.load').forEach(b => {
+    b.addEventListener('click', () => {
+      loadScenario(parseInt(b.dataset.idx));
+    });
+  });
+}
+
+function loadScenario(idx) {
+  const sc = state.savedScenarios[idx];
+  if (!sc) return;
+  Object.assign(state.a, sc.snapshot.a);
+  Object.assign(state.b, sc.snapshot.b);
+  state.millage = sc.snapshot.millage;
+  state.investReturn = sc.snapshot.investReturn;
+  state.gasPrice = sc.snapshot.gasPrice;
+  state.elecPrice = sc.snapshot.elecPrice;
+  state.docFee = sc.snapshot.docFee;
+  syncAllInputs();
+  recompute();
+}
+
+function syncAllInputs() {
+  // Shared
+  document.getElementById('millage').value = state.millage;
+  document.getElementById('investReturn').value = state.investReturn;
+  document.getElementById('gasPrice').value = state.gasPrice;
+  document.getElementById('elecPrice').value = state.elecPrice;
+  document.getElementById('docFee').value = state.docFee;
+  ['a', 'b'].forEach(side => {
+    const s = state[side];
+    const S = side.toUpperCase();
+    document.getElementById('msrp' + S).value = s.msrp;
+    document.getElementById('salePrice' + S).value = s.salePrice;
+    document.getElementById('holdYears' + S).value = s.holdYears;
+    document.getElementById('annualMiles' + S).value = s.annualMiles;
+    document.getElementById('downPayment' + S).value = s.downPayment;
+    document.getElementById('loanApr' + S).value = s.loanApr;
+    document.getElementById('loanTerm' + S).value = s.loanTerm;
+    document.getElementById('moneyFactor' + S).value = s.moneyFactor;
+    document.getElementById('leaseTerm' + S).value = s.leaseTerm;
+    document.getElementById('residualPct' + S).value = s.residualPct;
+    document.getElementById('capReduction' + S).value = s.capReduction;
+    document.getElementById('mileageAllow' + S).value = s.mileageAllow;
+    document.getElementById('mpg' + S).value = s.mpg;
+    document.getElementById('kwh' + S).value = s.kwh100;
+    document.getElementById('name' + S).textContent = s.name;
+    // Update mode toggle
+    const panel = document.querySelector(`.vehicle-panel.${side}`);
+    panel.querySelectorAll('.mode-toggle button').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === s.mode);
+    });
+    togglePanelMode(side);
+    togglePowertrainFields(side);
+    updateVehicleLabels(side);
+  });
+  updateSharedLabels();
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset both vehicles to defaults? Saved scenarios will be kept.')) {
+    location.reload();
+  }
+});
+
+// ============= COMPARE MODE TOGGLE =============
+document.querySelectorAll('#compareModeToggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#compareModeToggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.compareMode = btn.dataset.mode;
+    document.getElementById('compareModeInfo').textContent = state.compareMode === 'natural'
+      ? 'Each vehicle uses its own hold period. Compare on annualized cost or cost-per-mile.'
+      : 'Both vehicles compared over the longer hold period — leases auto-cycle to fill the timeline.';
+    document.getElementById('verdictEyebrow').textContent = state.compareMode === 'natural'
+      ? 'Cross-Vehicle Verdict · Annualized'
+      : 'Cross-Vehicle Verdict · Unified Timeline';
+    document.getElementById('deltaLabel').textContent = state.compareMode === 'natural'
+      ? 'annualized cost differential'
+      : 'total cost differential (same period)';
+    recompute();
+  });
+});
+
+// ============= FINANCIAL CORE =============
+function loanPayment(principal, apr, termMo) {
+  if (apr === 0) return principal / termMo;
+  const r = apr / 100 / 12;
+  return principal * r / (1 - Math.pow(1 + r, -termMo));
+}
+
+function leasePaymentSC(adjCap, residual, mf, termMo) {
+  // SC has no monthly sales tax on leases, just IMF upfront
+  const dep = (adjCap - residual) / termMo;
+  const finCharge = (adjCap + residual) * mf;
+  return dep + finCharge;
+}
+
+function imfFee(salePrice) {
+  return Math.min(SC_IMF_RATE * salePrice, SC_IMF_CAP);
+}
+
+function plateFee(powertrain) {
+  return SC_PLATE_FEE[powertrain] || 40;
+}
+
+function annualPropertyTax(value, millage) {
+  return value * SC_ASSESSMENT_RATIO * (millage / 1000);
+}
+
+function totalPropertyTax(depCurve, millage, years) {
+  let total = 0;
+  for (let y = 1; y <= years; y++) {
+    // Use fair market value at start of year
+    total += annualPropertyTax(depCurve[y - 1], millage);
+  }
+  return total;
+}
+
+function insuranceAnnual(profile, value) {
+  return profile.insBase + value * 0.012;
+}
+
+function maintenanceForYear(classProfile, powertrainMult, year, annualMiles) {
+  const base = year <= 3 ? 200 + year * 80 : 440 + Math.pow(year - 3, 1.7) * 280;
+  const mileageScale = annualMiles / 12000;
+  return base * classProfile.maintMult * powertrainMult * mileageScale;
+}
+
+function fuelCost(s, gasPrice, elecPrice) {
+  if (s.powertrain === 'ev') return (s.annualMiles * s.kwh100 / 100) * elecPrice;
+  if (s.mpg <= 0) return 0;
+  return (s.annualMiles / s.mpg) * gasPrice;
+}
+
+function depreciationCurve(depRate, msrp, years, annualMiles) {
+  const mileagePenalty = Math.max(0, (annualMiles - 12000) / 1000) * 0.005;
+  const adjRate = depRate + mileagePenalty;
+  const points = [];
+  let value = msrp;
+  for (let y = 0; y <= years; y++) {
+    points.push(value);
+    value = value * (1 - adjRate);
+  }
+  return points;
+}
+
+function opportunityCost(amount, years, ratePct) {
+  const r = ratePct / 100;
+  return amount * (Math.pow(1 + r, years) - 1);
+}
+
+function computeVehicle(side, overrideHoldYears = null) {
+  const s = state[side];
+  const classProfile = CLASS_PROFILES[s.class] || CLASS_PROFILES.midsize;
+  const powertrainMult = POWERTRAIN_MAINT[s.powertrain] || 1.0;
+  const T = overrideHoldYears !== null ? overrideHoldYears : s.holdYears;
+  const months = T * 12;
+
+  // SC fees
+  const imf = imfFee(s.salePrice);
+  const plate = plateFee(s.powertrain);
+  const titleFee = SC_TITLE_FEE;
+  const docFee = state.docFee;
+  const upfrontFees = imf + plate + titleFee + docFee;
+
+  const depCurve = depreciationCurve(s.depRate, s.salePrice, T, s.annualMiles);
+
+  let totalInsurance = 0;
+  let totalMaint = 0;
+  for (let y = 1; y <= T; y++) {
+    totalInsurance += insuranceAnnual(classProfile, depCurve[y - 1]);
+    totalMaint += maintenanceForYear(classProfile, powertrainMult, y, s.annualMiles);
+  }
+
+  const annualFuel = fuelCost(s, state.gasPrice, state.elecPrice);
+  const totalFuel = annualFuel * T;
+
+  // SC annual property tax
+  const totalPropTax = totalPropertyTax(depCurve, state.millage, T);
+  // Annual registration/plate renewal (~$40 gas/$60 hybrid/$120 EV/yr after first year)
+  const annualReg = plate; // each year
+  const totalReg = annualReg * T;
+
+  let result;
+
+  if (s.mode === 'buy') {
+    // Amount financed = sale price + IMF + doc + title + plate - down
+    const amountFinanced = s.salePrice + upfrontFees - s.downPayment;
+    const monthlyPmt = loanPayment(amountFinanced, s.loanApr, s.loanTerm);
+    const monthsPaid = Math.min(months, s.loanTerm);
+    const totalLoanPayments = monthlyPmt * monthsPaid;
+    const totalInterest = totalLoanPayments - (amountFinanced * (monthsPaid / s.loanTerm));
+    const resale = depCurve[T];
+    const oppCost = opportunityCost(s.downPayment, T, state.investReturn);
+
+    // Loan balance at exit
+    const r_m = s.loanApr / 100 / 12;
+    let balance = 0;
+    if (months < s.loanTerm) {
+      if (r_m === 0) balance = amountFinanced - monthlyPmt * months;
+      else balance = amountFinanced * Math.pow(1 + r_m, months) - monthlyPmt * (Math.pow(1 + r_m, months) - 1) / r_m;
+      balance = Math.max(0, balance);
+    }
+    const equity = resale - balance;
+
+    const total = s.downPayment + totalLoanPayments + totalInsurance + totalMaint + totalFuel + totalPropTax + totalReg + oppCost - resale;
+
+    result = {
+      mode: 'buy', total, monthly: monthlyPmt,
+      effMonthly: total / months,
+      annualized: total / T,
+      costPerMile: total / (s.annualMiles * T),
+      equity,
+      breakdown: {
+        downPayment: s.downPayment,
+        loanPayments: totalLoanPayments,
+        interest: totalInterest,
+        amountFinanced,
+        imf, plate, titleFee, docFee, upfrontFees,
+        insurance: totalInsurance,
+        maintenance: totalMaint,
+        fuel: totalFuel,
+        annualFuel,
+        propTax: totalPropTax,
+        registration: totalReg,
+        oppCost,
+        resale,
+        salesPrice: s.salePrice
+      },
+      depCurve, monthlyPmt, T
+    };
+  } else {
+    // LEASE
+    const adjCap = s.salePrice - s.capReduction;
+    const residualValue = s.msrp * s.residualPct / 100;
+    const lp = leasePaymentSC(adjCap, residualValue, s.moneyFactor, s.leaseTerm);
+    const cycles = Math.ceil(months / s.leaseTerm);
+    const dispFees = cycles * LEASE_DISP_FEE;
+    const acqFees = cycles * LEASE_ACQ_FEE;
+    // SC IMF + title + plate + doc on each new lease
+    const cycleFees = cycles * (imf + titleFee + plate + docFee);
+    const driveOff = cycles * s.capReduction;
+    const totalLP = lp * months;
+
+    const leaseInsurance = totalInsurance * 1.12;
+    const leaseMaint = totalMaint * 0.30;
+
+    const excessMiles = Math.max(0, s.annualMiles - s.mileageAllow);
+    const mileagePenalty = excessMiles * T * 0.25;
+
+    const leaseOpp = opportunityCost(s.capReduction * cycles / 2, T, state.investReturn);
+
+    // Property tax during lease - lessee pays in SC
+    const leasePropTax = totalPropTax;
+    const leaseReg = totalReg;
+
+    const total = driveOff + totalLP + acqFees + dispFees + cycleFees + leaseInsurance + leaseMaint + mileagePenalty + leaseOpp + totalFuel + leasePropTax + leaseReg;
+
+    // Compute components for breakdown
+    const dep = (adjCap - residualValue) / s.leaseTerm;
+    const finCharge = (adjCap + residualValue) * s.moneyFactor;
+
+    result = {
+      mode: 'lease', total, monthly: lp,
+      effMonthly: total / months,
+      annualized: total / T,
+      costPerMile: total / (s.annualMiles * T),
+      equity: 0,
+      breakdown: {
+        driveOff,
+        leasePayments: totalLP,
+        acqFees,
+        dispFees,
+        cycleFees,
+        cycles,
+        imf, plate, titleFee, docFee,
+        insurance: leaseInsurance,
+        maintenance: leaseMaint,
+        fuel: totalFuel,
+        annualFuel,
+        mileagePenalty,
+        propTax: leasePropTax,
+        registration: leaseReg,
+        oppCost: leaseOpp,
+        adjCap,
+        residual: residualValue,
+        depPerMo: dep,
+        finChargePerMo: finCharge
+      },
+      depCurve, monthlyPmt: lp, T
+    };
+  }
+
+  result.classProfile = classProfile;
+  result.powertrainMult = powertrainMult;
+  return result;
+}
+
+// ============= RENDER =============
+let chart = null;
+let activeChart = 'cumulative';
+
+function recompute() {
+  // For unified mode, use the larger hold period
+  let aResult, bResult;
+  if (state.compareMode === 'unified') {
+    const T = Math.max(state.a.holdYears, state.b.holdYears);
+    aResult = computeVehicle('a', T);
+    bResult = computeVehicle('b', T);
+  } else {
+    aResult = computeVehicle('a');
+    bResult = computeVehicle('b');
+  }
+
+  // Update vehicle cards
+  document.getElementById('totalA').textContent = fmt(aResult.total);
+  document.getElementById('effMonthlyA').textContent = fmt(aResult.effMonthly);
+  document.getElementById('costPerMileA').textContent = '$' + aResult.costPerMile.toFixed(2);
+  document.getElementById('fuelYrA').textContent = fmt(aResult.breakdown.annualFuel);
+  document.getElementById('equityA').textContent = aResult.mode === 'buy' ? fmt(aResult.equity) : '$0';
+  document.getElementById('resultPeriodA').textContent = aResult.T + ' yrs';
+  document.getElementById('fuelCostAVal').textContent = fmt(aResult.breakdown.annualFuel) + '/yr';
+
+  document.getElementById('totalB').textContent = fmt(bResult.total);
+  document.getElementById('effMonthlyB').textContent = fmt(bResult.effMonthly);
+  document.getElementById('costPerMileB').textContent = '$' + bResult.costPerMile.toFixed(2);
+  document.getElementById('fuelYrB').textContent = fmt(bResult.breakdown.annualFuel);
+  document.getElementById('equityB').textContent = bResult.mode === 'buy' ? fmt(bResult.equity) : '$0';
+  document.getElementById('resultPeriodB').textContent = bResult.T + ' yrs';
+  document.getElementById('fuelCostBVal').textContent = fmt(bResult.breakdown.annualFuel) + '/yr';
+
+  // Payment detail boxes
+  renderPaymentDetail('a', aResult);
+  renderPaymentDetail('b', bResult);
+
+  // Verdict
+  const useTotal = state.compareMode === 'unified';
+  const aWins = useTotal ? aResult.total < bResult.total : aResult.annualized < bResult.annualized;
+  const delta = useTotal ? Math.abs(aResult.total - bResult.total) : Math.abs(aResult.annualized - bResult.annualized);
+
+  document.getElementById('verdict').style.setProperty('--verdict-color', aWins ? 'var(--accent-a)' : 'var(--accent-b)');
+  const aLabel = `${state.a.name} (${state.a.mode === 'buy' ? 'Buy' : 'Lease'})`;
+  const bLabel = `${state.b.name} (${state.b.mode === 'buy' ? 'Buy' : 'Lease'})`;
+  document.getElementById('verdictText').innerHTML = aWins
+    ? `<strong>${aLabel}</strong> wins`
+    : `<strong>${bLabel}</strong> wins`;
+  document.getElementById('deltaAmount').textContent = useTotal ? fmt(delta) : (fmt(delta) + '/yr');
+  document.getElementById('verdictReasoning').textContent = generateReasoning(aResult, bResult, aWins);
+
+  // Normalize bar
+  const aWinAnn = aResult.annualized < bResult.annualized;
+  const aWinCpm = aResult.costPerMile < bResult.costPerMile;
+  const aWinEff = aResult.effMonthly < bResult.effMonthly;
+  const aWinTot = aResult.total < bResult.total;
+  document.getElementById('annA').textContent = fmt(aResult.annualized) + '/yr';
+  document.getElementById('annA').className = 'val' + (aWinAnn ? ' win' : '');
+  document.getElementById('annB').textContent = fmt(bResult.annualized) + '/yr';
+  document.getElementById('annB').className = 'val' + (!aWinAnn ? ' win' : '');
+  document.getElementById('cpmA').textContent = '$' + aResult.costPerMile.toFixed(2);
+  document.getElementById('cpmA').className = 'val' + (aWinCpm ? ' win' : '');
+  document.getElementById('cpmB').textContent = '$' + bResult.costPerMile.toFixed(2);
+  document.getElementById('cpmB').className = 'val' + (!aWinCpm ? ' win' : '');
+  document.getElementById('effA').textContent = fmt(aResult.effMonthly);
+  document.getElementById('effA').className = 'val' + (aWinEff ? ' win' : '');
+  document.getElementById('effB').textContent = fmt(bResult.effMonthly);
+  document.getElementById('effB').className = 'val' + (!aWinEff ? ' win' : '');
+  document.getElementById('totA').textContent = fmt(aResult.total) + ` · ${aResult.T}y`;
+  document.getElementById('totA').className = 'val' + (aWinTot ? ' win' : '');
+  document.getElementById('totB').textContent = fmt(bResult.total) + ` · ${bResult.T}y`;
+  document.getElementById('totB').className = 'val' + (!aWinTot ? ' win' : '');
+
+  // Negotiation
+  const discA = ((state.a.msrp - state.a.salePrice) / state.a.msrp * 100);
+  const discB = ((state.b.msrp - state.b.salePrice) / state.b.msrp * 100);
+  document.getElementById('negotDiscountA').innerHTML = discA.toFixed(1) + '<span class="unit">%</span>';
+  document.getElementById('negotDiscountB').innerHTML = discB.toFixed(1) + '<span class="unit">%</span>';
+  document.getElementById('negotMfA').innerHTML = (state.a.moneyFactor * 2400).toFixed(2) + '<span class="unit">% APR-eq</span>';
+  document.getElementById('negotMfB').innerHTML = (state.b.moneyFactor * 2400).toFixed(2) + '<span class="unit">% APR-eq</span>';
+
+  renderCompareTable(aResult, bResult);
+  document.getElementById('thA').textContent = `${state.a.name} · ${state.a.mode.toUpperCase()} · ${aResult.T}y`;
+  document.getElementById('thB').textContent = `${state.b.name} · ${state.b.mode.toUpperCase()} · ${bResult.T}y`;
+
+  renderInsights(aResult, bResult, aWins);
+  renderChart(aResult, bResult);
+}
+
+function renderPaymentDetail(side, result) {
+  const s = state[side];
+  if (s.mode === 'buy') {
+    document.getElementById(`pd${side}Sale`).textContent = fmt(s.salePrice);
+    document.getElementById(`pd${side}Imf`).textContent = fmt(result.breakdown.imf);
+    document.getElementById(`pd${side}Doc`).textContent = fmt(result.breakdown.docFee);
+    document.getElementById(`pd${side}Title`).textContent = fmt(result.breakdown.titleFee + result.breakdown.plate);
+    document.getElementById(`pd${side}Down`).textContent = fmt(result.breakdown.downPayment);
+    document.getElementById(`pd${side}Financed`).textContent = fmt(result.breakdown.amountFinanced);
+    document.getElementById(`pd${side}Payment`).textContent = fmt(result.monthlyPmt) + '/mo';
+  } else {
+    document.getElementById(`pd${side}Adjcap`).textContent = fmt(result.breakdown.adjCap);
+    document.getElementById(`pd${side}Residual`).textContent = fmt(result.breakdown.residual);
+    document.getElementById(`pd${side}Dep`).textContent = fmt(result.breakdown.depPerMo);
+    document.getElementById(`pd${side}Fin`).textContent = fmt(result.breakdown.finChargePerMo);
+    document.getElementById(`pd${side}Lpmt`).textContent = fmt(result.monthlyPmt) + '/mo';
+  }
+}
+
+function generateReasoning(a, b, aWins) {
+  const winnerName = aWins ? state.a.name : state.b.name;
+  const loserName = aWins ? state.b.name : state.a.name;
+  const winnerSide = aWins ? 'a' : 'b';
+  const loserSide = aWins ? 'b' : 'a';
+  const winnerMode = state[winnerSide].mode;
+  const loserMode = state[loserSide].mode;
+  const winner = aWins ? a : b;
+  const loser = aWins ? b : a;
+  const annDelta = loser.annualized - winner.annualized;
+  const cpmDelta = loser.costPerMile - winner.costPerMile;
+
+  if (state.compareMode === 'unified') {
+    const totalDelta = loser.total - winner.total;
+    return `Over the same ${winner.T}-year horizon, ${winnerName} (${winnerMode}) costs ${fmt(totalDelta)} less than ${loserName} (${loserMode}). ${loserMode === 'lease' && loser.breakdown.cycles > 1 ? `Note: ${loserName} requires ${loser.breakdown.cycles} lease cycles to fill the timeline, paying drive-off, IMF, and fees fresh each cycle. ` : ''}This is the apples-to-apples comparison.`;
+  }
+
+  if (winner.T !== loser.T) {
+    return `${winnerName} (${winnerMode}, ${winner.T}-yr) beats ${loserName} (${loserMode}, ${loser.T}-yr) by ${fmt(annDelta)}/yr or $${cpmDelta.toFixed(2)}/mile. Different hold periods make raw totals misleading — annualized cost is the honest metric. Switch to "Unified Timeline" mode above to compare on the same horizon.`;
+  }
+
+  if (state[winnerSide].powertrain === 'ev' && state[loserSide].powertrain !== 'ev') {
+    return `${winnerName} (EV) wins despite higher acquisition. Lower fuel cost (${fmt(winner.breakdown.annualFuel)}/yr vs ${fmt(loser.breakdown.annualFuel)}/yr) and ~40% reduced maintenance offset its faster depreciation. SC's $120 EV registration fee is included.`;
+  }
+
+  if (winnerMode !== loserMode) {
+    if (winnerMode === 'buy') {
+      return `Buying ${winnerName} wins by ${fmt(annDelta)}/yr. Equity capture and avoidance of repeated lease cycle fees (each requires fresh SC IMF, doc fees, and acquisition fees) tip the math toward ownership.`;
+    } else {
+      return `Leasing ${winnerName} wins by ${fmt(annDelta)}/yr. Lower upfront capital, depreciation risk transfer, and warranty coverage suit your hold profile.`;
+    }
+  }
+
+  return `${winnerName} (${winnerMode}) wins by ${fmt(annDelta)}/yr or $${cpmDelta.toFixed(2)}/mile. Drill into the breakdown for component-level differentials.`;
+}
+
+function renderCompareTable(a, b) {
+  const tbody = document.getElementById('compareTableBody');
+  tbody.innerHTML = '';
+
+  const sectionRow = (title) => {
+    const tr = document.createElement('tr');
+    tr.className = 'section-row';
+    tr.innerHTML = `<td colspan="4">${title}</td>`;
+    tbody.appendChild(tr);
+  };
+
+  const dataRow = (label, valA, valB, dir = 'lower-better', isBold = false) => {
+    const tr = document.createElement('tr');
+    let aWin = false, bWin = false;
+    if (dir === 'lower-better' || dir === 'lower-better-bold') {
+      aWin = valA < valB; bWin = valB < valA;
+    } else {
+      aWin = valA > valB; bWin = valB > valA;
+    }
+    const aClass = aWin ? 'metric win-a' : 'metric';
+    const bClass = bWin ? 'metric win-b' : 'metric';
+    const fmtVal = (v) => v < 0 ? '−' + fmt(Math.abs(v)) : fmt(v);
+    const diff = Math.abs(valA - valB);
+    tr.innerHTML = `
+      <td class="label" ${isBold ? 'style="color:var(--paper);font-weight:500"' : ''}>${label}</td>
+      <td class="${aClass}" ${isBold ? 'style="font-size:14px"' : ''}>${fmtVal(valA)}</td>
+      <td class="${bClass}" ${isBold ? 'style="font-size:14px"' : ''}>${fmtVal(valB)}</td>
+      <td class="metric" style="color:var(--text-faint)">${diff > 0 ? fmt(diff) : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  };
+
+  // ACQUISITION + SC FEES
+  sectionRow('Upfront / Acquisition (SC Fees Included)');
+  if (a.mode === 'buy' && b.mode === 'buy') {
+    dataRow('Down Payment', a.breakdown.downPayment, b.breakdown.downPayment);
+    dataRow('SC IMF (5% capped @ $500)', a.breakdown.imf, b.breakdown.imf);
+    dataRow('Doc Fee', a.breakdown.docFee, b.breakdown.docFee);
+    dataRow('Title + Plate Fee', a.breakdown.titleFee + a.breakdown.plate, b.breakdown.titleFee + b.breakdown.plate);
+    dataRow('Amount Financed', a.breakdown.amountFinanced, b.breakdown.amountFinanced);
+    dataRow('Total Loan Payments', a.breakdown.loanPayments, b.breakdown.loanPayments);
+    dataRow('Total Interest', a.breakdown.interest, b.breakdown.interest);
+  } else if (a.mode === 'lease' && b.mode === 'lease') {
+    dataRow('Drive-Off Total (× cycles)', a.breakdown.driveOff, b.breakdown.driveOff);
+    dataRow('Lease Payments (period)', a.breakdown.leasePayments, b.breakdown.leasePayments);
+    dataRow('Acquisition Fees (× cycles)', a.breakdown.acqFees, b.breakdown.acqFees);
+    dataRow('Disposition Fees (× cycles)', a.breakdown.dispFees, b.breakdown.dispFees);
+    dataRow('SC IMF + Doc + Title (× cycles)', a.breakdown.cycleFees, b.breakdown.cycleFees);
+    dataRow('Lease Cycles Required', a.breakdown.cycles, b.breakdown.cycles, 'lower-better');
+  } else {
+    const aInit = a.mode === 'buy' ? a.breakdown.downPayment : a.breakdown.driveOff;
+    const bInit = b.mode === 'buy' ? b.breakdown.downPayment : b.breakdown.driveOff;
+    dataRow('Initial Cash Outlay', aInit, bInit);
+    dataRow('SC IMF', a.breakdown.imf * (a.mode === 'lease' ? a.breakdown.cycles : 1), b.breakdown.imf * (b.mode === 'lease' ? b.breakdown.cycles : 1));
+    dataRow('Doc Fees', a.breakdown.docFee * (a.mode === 'lease' ? a.breakdown.cycles : 1), b.breakdown.docFee * (b.mode === 'lease' ? b.breakdown.cycles : 1));
+    const aPmt = a.mode === 'buy' ? a.breakdown.loanPayments : a.breakdown.leasePayments;
+    const bPmt = b.mode === 'buy' ? b.breakdown.loanPayments : b.breakdown.leasePayments;
+    dataRow(`A: ${a.mode} payments / B: ${b.mode} payments`, aPmt, bPmt);
+    if (a.mode === 'lease') dataRow('A — Acq + Disp Fees', a.breakdown.acqFees + a.breakdown.dispFees, 0);
+    if (b.mode === 'lease') dataRow('B — Acq + Disp Fees', 0, b.breakdown.acqFees + b.breakdown.dispFees);
+    if (a.mode === 'buy') dataRow('A — Interest paid', a.breakdown.interest, 0);
+    if (b.mode === 'buy') dataRow('B — Interest paid', 0, b.breakdown.interest);
+  }
+
+  // OPERATING
+  sectionRow('Operating Costs');
+  dataRow('Insurance (period)', a.breakdown.insurance, b.breakdown.insurance);
+  dataRow('Maintenance + Repairs', a.breakdown.maintenance, b.breakdown.maintenance);
+  dataRow('Fuel / Energy (period)', a.breakdown.fuel, b.breakdown.fuel);
+  dataRow('  ↳ Annual fuel cost', a.breakdown.annualFuel, b.breakdown.annualFuel);
+
+  // SC PROPERTY TAX & REGISTRATION
+  sectionRow('SC Annual Costs');
+  dataRow('Annual Property Tax (period)', a.breakdown.propTax, b.breakdown.propTax);
+  dataRow('Registration / Plate Renewal (period)', a.breakdown.registration, b.breakdown.registration);
+
+  // CAPITAL
+  sectionRow('Capital Costs');
+  dataRow('Opportunity Cost on Capital', a.breakdown.oppCost, b.breakdown.oppCost);
+  if (a.mode === 'lease' || b.mode === 'lease') {
+    const aMile = a.mode === 'lease' ? a.breakdown.mileagePenalty : 0;
+    const bMile = b.mode === 'lease' ? b.breakdown.mileagePenalty : 0;
+    dataRow('Excess Mileage Penalty', aMile, bMile);
+  }
+
+  // EQUITY
+  sectionRow('Equity & Recovery');
+  if (a.mode === 'buy' || b.mode === 'buy') {
+    const aRes = a.mode === 'buy' ? -a.breakdown.resale : 0;
+    const bRes = b.mode === 'buy' ? -b.breakdown.resale : 0;
+    dataRow('Resale Value at Exit (credit)', aRes, bRes);
+    dataRow('Net Equity at Exit', a.equity, b.equity, 'higher-better');
+  }
+
+  // NORMALIZED
+  sectionRow('Normalized Metrics');
+  dataRow('TOTAL COST OF OWNERSHIP', a.total, b.total, 'lower-better-bold', true);
+  dataRow('Annualized Cost', a.annualized, b.annualized);
+  dataRow('Effective $ / Month', a.effMonthly, b.effMonthly);
+
+  const trCpm = document.createElement('tr');
+  const aWinCpm = a.costPerMile < b.costPerMile;
+  trCpm.innerHTML = `
+    <td class="label">Cost / Mile Driven</td>
+    <td class="metric ${aWinCpm ? 'win-a' : ''}">$${a.costPerMile.toFixed(2)}</td>
+    <td class="metric ${!aWinCpm ? 'win-b' : ''}">$${b.costPerMile.toFixed(2)}</td>
+    <td class="metric" style="color:var(--text-faint)">$${Math.abs(a.costPerMile - b.costPerMile).toFixed(2)}</td>
+  `;
+  tbody.appendChild(trCpm);
+}
+
+function renderInsights(a, b, aWins) {
+  const list = document.getElementById('insightList');
+  list.innerHTML = '';
+  const insights = [];
+
+  // SC-specific insight
+  insights.push({
+    type: 'info', icon: '◇',
+    title: 'SC IMF caps your acquisition tax',
+    text: `SC charges $${imfFee(state.a.salePrice).toFixed(0)} on Vehicle A and $${imfFee(state.b.salePrice).toFixed(0)} on Vehicle B (5% capped at $500). Compare to states like NC where you'd pay 3% with no cap — SC saves you significant money on luxury/truck purchases.`,
+    metric: 'SC advantage'
+  });
+
+  if (state.compareMode === 'unified' && state.a.holdYears !== state.b.holdYears) {
+    insights.push({
+      type: 'note', icon: '◎',
+      title: 'Unified timeline: leases auto-cycle',
+      text: `Leases re-cycle to fill the longer hold period. ${state.a.mode === 'lease' ? `A goes through ${a.breakdown.cycles} cycles. ` : ''}${state.b.mode === 'lease' ? `B goes through ${b.breakdown.cycles} cycles. ` : ''}Each cycle pays fresh SC IMF, doc fee, and acquisition fee.`,
+      metric: 'apples-to-apples'
+    });
+  }
+
+  // Annual property tax flag
+  if (a.breakdown.propTax > 4000 || b.breakdown.propTax > 4000) {
+    insights.push({
+      type: 'warn', icon: '!',
+      title: 'High SC annual property tax exposure',
+      text: `SC charges annual personal property tax (Greenville ~${state.millage} mills × 6% assessment ratio). Over your hold period this is ${fmt(a.breakdown.propTax)} on A and ${fmt(b.breakdown.propTax)} on B — often forgotten when comparing to other states.`,
+      metric: fmt(Math.max(a.breakdown.propTax, b.breakdown.propTax)) + ' total'
+    });
+  }
+
+  // EV registration insight
+  ['a', 'b'].forEach(side => {
+    const s = state[side];
+    if (s.powertrain === 'ev') {
+      insights.push({
+        type: 'note', icon: '⚡',
+        title: `${s.name} — SC EV registration $120/yr`,
+        text: 'SC charges higher registration on EVs ($120) and hybrids ($60) vs gas ($40) to recoup gas tax revenue. Factored into the analysis.',
+        metric: '$120/yr reg'
+      });
+    }
+  });
+
+  // Mileage flags
+  ['a', 'b'].forEach(side => {
+    const s = state[side];
+    if (s.mode === 'lease' && s.annualMiles < s.mileageAllow * 0.7) {
+      const wasted = (s.mileageAllow - s.annualMiles) * s.holdYears;
+      insights.push({
+        type: 'warn', icon: '!',
+        title: `${s.name} — paying for unused miles`,
+        text: `Allowance ${fmtMi(s.mileageAllow)}/yr but using only ${fmtMi(s.annualMiles)}. Over ${s.holdYears} years you forfeit ~${fmtMi(wasted)} miles. Drop to a lower mileage tier to reduce monthly payment.`,
+        metric: fmtMi(wasted) + ' wasted'
+      });
+    }
+    if (s.mode === 'lease' && s.annualMiles > s.mileageAllow) {
+      const result = side === 'a' ? a : b;
+      insights.push({
+        type: 'warn', icon: '!',
+        title: `${s.name} — exceeding lease cap`,
+        text: `${fmtMi(s.annualMiles)}/yr exceeds ${fmtMi(s.mileageAllow)} allowance. Charged $0.25/mi over.`,
+        metric: fmt(result.breakdown.mileagePenalty) + ' penalty'
+      });
+    }
+  });
+
+  // Money factor flags
+  ['a', 'b'].forEach(side => {
+    const s = state[side];
+    if (s.mode === 'lease') {
+      const aprEquiv = s.moneyFactor * 2400;
+      if (aprEquiv > s.loanApr + 1.5) {
+        insights.push({
+          type: 'warn', icon: '!',
+          title: `${s.name} — money factor priced high`,
+          text: `MF ${s.moneyFactor.toFixed(5)} ≈ ${aprEquiv.toFixed(2)}% APR vs ${s.loanApr.toFixed(2)}% loan. Negotiate the MF down or compare against captive financing — this is a real lever at the dealership.`,
+          metric: aprEquiv.toFixed(2) + '% APR-eq'
+        });
+      }
+    }
+  });
+
+  // Negotiation: discount off MSRP
+  ['a', 'b'].forEach(side => {
+    const s = state[side];
+    const disc = (s.msrp - s.salePrice) / s.msrp;
+    if (disc < 0.04) {
+      insights.push({
+        type: 'note', icon: '$',
+        title: `${s.name} — push for more discount`,
+        text: `Currently only ${(disc * 100).toFixed(1)}% off MSRP. Class targets: economy 5-8%, midsize 6-10%, truck 8-12%, luxury 10-15%, EV (non-Tesla) 5-15% depending on inventory pressure.`,
+        metric: (disc * 100).toFixed(1) + '% off'
+      });
+    }
+  });
+
+  // Powertrain mismatch
+  if (state.a.powertrain !== state.b.powertrain) {
+    const fuelDelta = Math.abs(a.breakdown.annualFuel - b.breakdown.annualFuel);
+    if (fuelDelta > 800) {
+      const cheaper = a.breakdown.annualFuel < b.breakdown.annualFuel ? state.a.name : state.b.name;
+      insights.push({
+        type: 'good', icon: '⚡',
+        title: `${cheaper} saves on fuel/energy`,
+        text: `${fmt(fuelDelta)}/yr fuel delta between the two. Compounds materially over hold period.`,
+        metric: fmt(fuelDelta) + '/yr'
+      });
+    }
+  }
+
+  // Business use
+  if (state.businessUse >= 50) {
+    insights.push({
+      type: 'note', icon: '§',
+      title: 'Section 179 / bonus depreciation in play',
+      text: 'At 50%+ business use, vehicles >6,000 lb GVWR (most trucks/large SUVs) qualify for accelerated bonus depreciation. Run past your CPA — could materially shift the math through BeaconPath Holdings.',
+      metric: state.businessUse + '% biz'
+    });
+  }
+
+  // EV maintenance advantage
+  ['a', 'b'].forEach(side => {
+    const s = state[side];
+    if (s.powertrain === 'ev') {
+      insights.push({
+        type: 'good', icon: '✓',
+        title: `${s.name} — EV maintenance advantage`,
+        text: 'No oil changes, no transmission service, regen brakes extend pad life. Model applies 40% reduction vs ICE baseline.',
+        metric: '~40% lower'
+      });
+    }
+  });
+
+  if (insights.length === 0) {
+    insights.push({
+      type: 'good', icon: '✓',
+      title: 'Comparison is well-balanced',
+      text: 'No flags raised — both scenarios sit within typical ranges.',
+      metric: 'clean'
+    });
+  }
+
+  insights.forEach(ins => {
+    const div = document.createElement('div');
+    div.className = 'insight';
+    div.innerHTML = `
+      <div class="icon ${ins.type}">${ins.icon}</div>
+      <div class="body">
+        <div class="title">${ins.title}</div>
+        <div class="text">${ins.text}</div>
+      </div>
+      <div class="metric">${ins.metric}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ============= CHARTS =============
+document.querySelectorAll('.chart-tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chart-tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeChart = btn.dataset.chart;
+    recompute();
+  });
+});
+
+function buildCumulativeData(side, result) {
+  const s = state[side];
+  const months = result.T * 12;
+  const data = [];
+  const annualFuel = result.breakdown.annualFuel;
+  const monthlyFuel = annualFuel / 12;
+  const monthlyPropTax = result.breakdown.propTax / months;
+  const monthlyReg = result.breakdown.registration / months;
+
+  if (s.mode === 'buy') {
+    const pmt = result.monthlyPmt;
+    const insPerMo = result.breakdown.insurance / months;
+    const maintPerMo = result.breakdown.maintenance / months;
+    for (let m = 0; m <= months; m++) {
+      const monthsPaid = Math.min(m, s.loanTerm);
+      const oppPart = result.breakdown.oppCost * (m / months);
+      data.push({ month: m, value: s.downPayment + pmt * monthsPaid + insPerMo * m + maintPerMo * m + monthlyFuel * m + monthlyPropTax * m + monthlyReg * m + oppPart });
+    }
+  } else {
+    const pmt = result.monthlyPmt;
+    const insPerMo = result.breakdown.insurance / months;
+    const maintPerMo = result.breakdown.maintenance / months;
+    const milePerMo = result.breakdown.mileagePenalty / months;
+    for (let m = 0; m <= months; m++) {
+      const cyclesUsed = m === 0 ? 1 : Math.ceil(m / s.leaseTerm);
+      const driveOffSoFar = s.capReduction * cyclesUsed;
+      const cycleFeesSoFar = (LEASE_ACQ_FEE + LEASE_DISP_FEE + result.breakdown.imf + result.breakdown.docFee + result.breakdown.titleFee + result.breakdown.plate) * cyclesUsed;
+      data.push({ month: m, value: driveOffSoFar + cycleFeesSoFar + pmt * m + insPerMo * m + maintPerMo * m + monthlyFuel * m + monthlyPropTax * m + monthlyReg * m + milePerMo * m });
+    }
+  }
+  return data;
+}
+
+function buildEquityData(side, result) {
+  const s = state[side];
+  const months = result.T * 12;
+  const data = [];
+  if (s.mode === 'lease') {
+    for (let m = 0; m <= months; m++) data.push({ month: m, value: 0 });
+    return data;
+  }
+  const dep = result.depCurve;
+  const totalLoan = result.breakdown.amountFinanced;
+  const pmt = loanPayment(totalLoan, s.loanApr, s.loanTerm);
+  const r_m = s.loanApr / 100 / 12;
+  for (let m = 0; m <= months; m++) {
+    const yearFrac = m / 12;
+    const yi = Math.min(Math.floor(yearFrac), dep.length - 1);
+    const yi2 = Math.min(yi + 1, dep.length - 1);
+    const f = yearFrac - yi;
+    const carValue = dep[yi] * (1 - f) + dep[yi2] * f;
+    let balance;
+    if (m >= s.loanTerm) balance = 0;
+    else if (r_m === 0) balance = totalLoan - pmt * m;
+    else balance = totalLoan * Math.pow(1 + r_m, m) - pmt * (Math.pow(1 + r_m, m) - 1) / r_m;
+    balance = Math.max(0, balance);
+    data.push({ month: m, value: carValue - balance });
+  }
+  return data;
+}
+
+function buildFuelData(side, result) {
+  const months = result.T * 12;
+  const monthlyFuel = result.breakdown.annualFuel / 12;
+  const data = [];
+  for (let m = 0; m <= months; m++) data.push({ month: m, value: monthlyFuel * m });
+  return data;
+}
+
+function buildDepData(side, result) {
+  const data = [];
+  for (let y = 0; y <= result.T; y++) data.push({ month: y * 12, value: result.depCurve[y] });
+  return data;
+}
+
+function buildMonthlyData(side, result) {
+  const s = state[side];
+  const months = result.T * 12;
+  const data = [];
+  const monthlyFuel = result.breakdown.annualFuel / 12;
+  const insMo = result.breakdown.insurance / months;
+  const maintMo = result.breakdown.maintenance / months;
+  const propMo = result.breakdown.propTax / months;
+  for (let m = 1; m <= months; m++) {
+    let mo;
+    if (s.mode === 'buy') {
+      mo = (m <= s.loanTerm ? result.monthlyPmt : 0) + insMo + maintMo + monthlyFuel + propMo;
+    } else {
+      mo = result.monthlyPmt + insMo + maintMo + monthlyFuel + propMo;
+    }
+    data.push({ month: m, value: mo });
+  }
+  return data;
+}
+
+function buildCumNormData(side, result) {
+  const s = state[side];
+  const months = result.T * 12;
+  const cum = buildCumulativeData(side, result);
+  const monthlyMiles = s.annualMiles / 12;
+  return cum.map((p, i) => ({
+    month: p.month,
+    value: i === 0 ? 0 : p.value / (monthlyMiles * p.month)
+  }));
+}
+
+function renderChart(a, b) {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  let aData = [], bData = [];
+  let yLabelFn = (v) => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0) + 'k' : v);
+
+  if (activeChart === 'cumulative') {
+    aData = buildCumulativeData('a', a);
+    bData = buildCumulativeData('b', b);
+  } else if (activeChart === 'cumulativeNorm') {
+    aData = buildCumNormData('a', a);
+    bData = buildCumNormData('b', b);
+    yLabelFn = (v) => '$' + v.toFixed(2);
+  } else if (activeChart === 'equity') {
+    aData = buildEquityData('a', a);
+    bData = buildEquityData('b', b);
+  } else if (activeChart === 'depreciation') {
+    aData = buildDepData('a', a);
+    bData = buildDepData('b', b);
+  } else if (activeChart === 'fuel') {
+    aData = buildFuelData('a', a);
+    bData = buildFuelData('b', b);
+  } else if (activeChart === 'monthly') {
+    aData = buildMonthlyData('a', a);
+    bData = buildMonthlyData('b', b);
+  }
+
+  const aLabel = `${state.a.name} (${state.a.mode}, ${a.T}y)`;
+  const bLabel = `${state.b.name} (${state.b.mode}, ${b.T}y)`;
+
+  const datasets = [
+    {
+      label: aLabel,
+      data: aData.map(p => ({ x: p.month, y: p.value })),
+      borderColor: '#d4a574',
+      backgroundColor: 'rgba(212,165,116,0.08)',
+      fill: activeChart !== 'depreciation',
+      tension: 0.2,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4
+    },
+    {
+      label: bLabel,
+      data: bData.map(p => ({ x: p.month, y: p.value })),
+      borderColor: '#5b9b9b',
+      backgroundColor: 'rgba(91,155,155,0.08)',
+      fill: activeChart !== 'depreciation',
+      tension: 0.2,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4
+    }
+  ];
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600 },
+      interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#8a8478',
+            font: { family: 'JetBrains Mono', size: 10, weight: '500' },
+            padding: 14, boxWidth: 20, boxHeight: 2
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0e0d0a',
+          borderColor: '#2a2723',
+          borderWidth: 1,
+          titleColor: '#f5f1e8',
+          bodyColor: '#e8e3d6',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          padding: 12,
+          callbacks: {
+            title: (items) => 'Month ' + items[0].parsed.x,
+            label: (item) => item.dataset.label + ': ' + (activeChart === 'cumulativeNorm' ? '$' + item.parsed.y.toFixed(2) + '/mi' : fmt(item.parsed.y))
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          ticks: { color: '#5a544a', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 },
+          grid: { color: 'rgba(42,39,35,0.4)', drawBorder: false },
+          title: { display: true, text: 'MONTHS', color: '#5a544a', font: { family: 'JetBrains Mono', size: 10 } }
+        },
+        y: {
+          ticks: { color: '#5a544a', font: { family: 'JetBrains Mono', size: 10 }, callback: yLabelFn },
+          grid: { color: 'rgba(42,39,35,0.4)', drawBorder: false }
+        }
+      }
+    }
+  });
+}
+
+// Timestamp
+function tickClock() {
+  const d = new Date();
+  document.getElementById('timestamp').textContent = d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).toUpperCase();
+}
+tickClock();
+setInterval(tickClock, 60000);
+
+// ============= INIT =============
+bindShared();
+bindVehicleSide('a');
+bindVehicleSide('b');
+togglePowertrainFields('a');
+togglePowertrainFields('b');
+updateSharedLabels();
+updateVehicleLabels('a');
+updateVehicleLabels('b');
+recompute();
+</script>
+</body>
+</html>

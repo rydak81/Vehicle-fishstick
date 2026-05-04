@@ -1,0 +1,21 @@
+{
+  "name": "vehicle-decision-engine",
+  "version": "1.0.0",
+  "description": "Cross-vehicle buy vs lease decision engine with SC tax calibration, VIN decoding, and full TCO modeling. Built for BeaconPath Holdings.",
+  "private": true,
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "start": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "vehicle",
+    "buy-vs-lease",
+    "tco",
+    "calculator",
+    "south-carolina",
+    "imf",
+    "automotive-finance"
+  ],
+  "author": "Ryan / BeaconPath Holdings",
+  "license": "MIT"
+}
