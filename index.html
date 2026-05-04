@@ -2859,10 +2859,16 @@ function handleApiDecodeResult(vin, r) {
 
   const dbMatch = matchVehicleInDb(make.toLowerCase(), corpus, isEv, isHybrid);
 
+  // Prefer the DB's casing for the make (e.g. "Ford") over NHTSA's all-caps
+  // ("FORD"). Falls back to title-casing if the make isn't in the DB.
+  const prettyMake = (dbMatch && dbMatch.make) ||
+    (VEHICLE_DB.find(v => v.make.toLowerCase() === make.toLowerCase()) || {}).make ||
+    make.replace(/\b\w/g, c => c.toUpperCase()).replace(/\B\w+/g, s => s.toLowerCase());
+
   applyDecodeResult(dbMatch, {
     year, make, model, trim, bodyClass, fuel,
     isEv, isHybrid,
-    customName: `${year} ${make} ${model}${trim ? ' ' + trim : ''}`
+    customName: `${year} ${prettyMake} ${model}${trim ? ' ' + trim : ''}`
   });
 }
 
@@ -2941,8 +2947,29 @@ function applyDecodeResult(dbMatch, info) {
   setTimeout(() => {
     if (dbMatch) {
       loadVehicle(activeVinSide, dbMatch);
-      vinStatus.innerHTML += `<br/><span style="color:var(--accent-a)">→ Matched: ${dbMatch.name}. Pricing & specs loaded from database.</span>`;
-      setTimeout(() => vinModal.classList.remove('open'), 2000);
+      // The DB only carries a few representative trims per nameplate (e.g. one
+      // gas F-150 — the XLT). When the VIN decodes to a different trim, the
+      // pricing/specs from the DB are still the right ballpark, but the panel
+      // header should show the *actual* vehicle the user scanned, not the DB
+      // entry's label. Override the displayed name with the VIN-decoded name
+      // so a Lariat VIN doesn't masquerade as an XLT.
+      const trimLower = (info.trim || '').toLowerCase();
+      const sameTrim = trimLower && dbMatch.name.toLowerCase().includes(trimLower);
+      const useVinName = info.customName && !sameTrim;
+      if (useVinName) {
+        const S = activeVinSide.toUpperCase();
+        state[activeVinSide].name = info.customName;
+        document.getElementById('name' + S).textContent = info.customName;
+        const econ = state[activeVinSide].powertrain === 'ev'
+          ? `${state[activeVinSide].kwh100} kWh/100mi`
+          : `${state[activeVinSide].mpg} MPG`;
+        document.getElementById('meta' + S).textContent =
+          `${info.year} · ${dbMatch.class.replace('_',' ').toUpperCase()} · ${state[activeVinSide].powertrain.toUpperCase()} · ${econ} · BASELINE FROM ${dbMatch.name.toUpperCase()}`;
+        vinStatus.innerHTML += `<br/><span style="color:var(--gold)">→ Closest DB match: <strong>${dbMatch.name}</strong>. Pricing &amp; specs loaded as a baseline — verify MSRP for your specific trim (Lariat / Platinum / King Ranch tend to be higher than XLT).</span>`;
+      } else {
+        vinStatus.innerHTML += `<br/><span style="color:var(--accent-a)">→ Matched: ${dbMatch.name}. Pricing &amp; specs loaded from database.</span>`;
+      }
+      setTimeout(() => vinModal.classList.remove('open'), useVinName ? 3500 : 2000);
     } else {
       // Class-inferred defaults
       const inferredClass = inferClass(info.bodyClass, info.fuel);
@@ -3888,6 +3915,7 @@ function buildCumNormData(side, result) {
 }
 
 function renderChart(a, b) {
+  if (typeof Chart === 'undefined') return; // Chart.js CDN unavailable; skip silently
   const ctx = document.getElementById('mainChart').getContext('2d');
   if (chart) chart.destroy();
 
