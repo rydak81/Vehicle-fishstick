@@ -2821,14 +2821,34 @@ function handleApiDecodeResult(vin, r) {
   }
 
   const trim = r.Trim || '';
+  const series = r.Series || '';
   const fuel = r.FuelTypePrimary || '';
   const fuel2 = r.FuelTypeSecondary || '';
   const bodyClass = r.BodyClass || '';
   const electrification = r.ElectrificationLevel || '';
 
+  // Reliable powertrain detection — ElectrificationLevel is NHTSA's authoritative
+  // signal; FuelTypePrimary alone is unreliable (sometimes blank for BEVs, varies
+  // between "Electric" / "Electric (Electricity)" / "Battery Electric").
+  const elecLower = electrification.toLowerCase();
+  const fuelLower = fuel.toLowerCase();
+  const fuel2Lower = fuel2.toLowerCase();
+  const corpus = `${model} ${trim} ${series}`.toLowerCase();
+  const isPhev = elecLower.includes('phev') || elecLower.includes('plug-in');
+  const isHev = elecLower.includes('hev') && !isPhev && !elecLower.includes('bev');
+  const isBev = elecLower.includes('bev') ||
+                elecLower.includes('battery electric') ||
+                (fuelLower.includes('electric') && !fuelLower.includes('gas') && !isHev && !isPhev);
+  const isEv = isBev;
+  const isHybrid = !isBev && (isHev || isPhev ||
+                              fuel2Lower.includes('electric') ||
+                              corpus.includes('hybrid'));
+
   let statusHtml = `<span style="color:var(--accent-2)">✓ Decoded:</span> ${year} ${make} ${model}${trim ? ' ' + trim : ''}`;
-  if (bodyClass || fuel) {
-    statusHtml += `<br/><span style="color:var(--text-faint)">${bodyClass}${fuel ? ' · ' + fuel : ''}${fuel2 ? '/' + fuel2 : ''}</span>`;
+  if (bodyClass || fuel || electrification) {
+    const ptLabel = isEv ? 'EV' : isHybrid ? (isPhev ? 'PHEV' : 'Hybrid') : 'Gas';
+    const detailParts = [bodyClass, fuel, fuel2 && fuel2 !== fuel ? fuel2 : '', electrification, ptLabel].filter(Boolean);
+    statusHtml += `<br/><span style="color:var(--text-faint)">${detailParts.join(' · ')}</span>`;
   }
   if (errorCode === '1') {
     statusHtml += `<br/><span style="color:var(--gold)">⚠ Check digit warning — data still valid.</span>`;
@@ -2836,48 +2856,39 @@ function handleApiDecodeResult(vin, r) {
   vinStatus.innerHTML = statusHtml;
   vinStatus.className = 'modal-status success';
 
-  // DB matching (same logic as before)
-  let dbMatch = null;
-  const makeNorm = make.toLowerCase();
-  const modelFirstWord = model.toLowerCase().split(' ')[0];
-  const isHybrid = (electrification && electrification.toLowerCase().includes('hev')) ||
-                    (fuel2 && fuel2.toLowerCase().includes('electric')) ||
-                    (model.toLowerCase().includes('hybrid'));
-  const isEv = fuel.toLowerCase().includes('electric') && !fuel.toLowerCase().includes('gas');
-
-  if (isHybrid) {
-    dbMatch = VEHICLE_DB.find(v =>
-      v.make.toLowerCase() === makeNorm &&
-      v.model.toLowerCase().includes(modelFirstWord) &&
-      v.powertrain === 'hybrid'
-    );
-  }
-  if (!dbMatch && isEv) {
-    dbMatch = VEHICLE_DB.find(v =>
-      v.make.toLowerCase() === makeNorm &&
-      v.model.toLowerCase().includes(modelFirstWord) &&
-      v.powertrain === 'ev'
-    );
-  }
-  if (!dbMatch) {
-    dbMatch = VEHICLE_DB.find(v =>
-      v.make.toLowerCase() === makeNorm &&
-      v.model.toLowerCase().includes(modelFirstWord) &&
-      v.powertrain === 'gas'
-    );
-  }
-  if (!dbMatch) {
-    dbMatch = VEHICLE_DB.find(v =>
-      v.make.toLowerCase() === makeNorm &&
-      v.model.toLowerCase().includes(modelFirstWord)
-    );
-  }
+  const dbMatch = matchVehicleInDb(make.toLowerCase(), corpus, isEv, isHybrid);
 
   applyDecodeResult(dbMatch, {
     year, make, model, trim, bodyClass, fuel,
     isEv, isHybrid,
     customName: `${year} ${make} ${model}${trim ? ' ' + trim : ''}`
   });
+}
+
+// Score-based DB match: combines model + trim + series so that an F-150 Lightning
+// VIN (which NHTSA returns as Model="F-150" with trim "Lightning Lariat") matches
+// the "Ford F-150 Lightning" entry instead of the first gas F-150. Restricts the
+// candidate pool to the detected powertrain, so EV/hybrid VINs never silently load
+// a gas variant — if no powertrain-correct entry exists, returns null and lets the
+// caller fall back to class-inferred defaults.
+function matchVehicleInDb(makeNorm, corpus, isEv, isHybrid) {
+  const targetPt = isEv ? 'ev' : isHybrid ? 'hybrid' : 'gas';
+  const pool = VEHICLE_DB.filter(v =>
+    v.make.toLowerCase() === makeNorm && v.powertrain === targetPt
+  );
+  if (!pool.length) return null;
+
+  let best = null, bestScore = 0;
+  for (const v of pool) {
+    const dbModel = v.model.toLowerCase();
+    let score = 0;
+    if (corpus.includes(dbModel)) score += dbModel.length * 2;
+    for (const tok of dbModel.split(/\s+/).filter(Boolean)) {
+      if (corpus.includes(tok)) score += tok.length;
+    }
+    if (score > bestScore) { best = v; bestScore = score; }
+  }
+  return bestScore > 0 ? best : null;
 }
 
 function handleOfflineDecode(vin, isFileProtocol) {
@@ -2909,40 +2920,17 @@ function handleOfflineDecode(vin, isFileProtocol) {
   vinStatus.innerHTML = statusHtml;
   vinStatus.className = 'modal-status success';
 
-  // Try DB match
-  let dbMatch = null;
-  if (make && model) {
-    const makeNorm = make.toLowerCase();
-    const modelFirstWord = model.toLowerCase().split(' ')[0];
-    // Prefer the gas variant for offline mode unless we explicitly know it's EV
-    if (type === 'ev' || type === 'ev_truck') {
-      dbMatch = VEHICLE_DB.find(v =>
-        v.make.toLowerCase() === makeNorm &&
-        v.model.toLowerCase().includes(modelFirstWord) &&
-        (v.powertrain === 'ev')
-      );
-    }
-    if (!dbMatch) {
-      dbMatch = VEHICLE_DB.find(v =>
-        v.make.toLowerCase() === makeNorm &&
-        v.model.toLowerCase().includes(modelFirstWord) &&
-        v.powertrain === 'gas'
-      );
-    }
-    if (!dbMatch) {
-      dbMatch = VEHICLE_DB.find(v =>
-        v.make.toLowerCase() === makeNorm &&
-        v.model.toLowerCase().includes(modelFirstWord)
-      );
-    }
-  }
+  const isEvOffline = type === 'ev' || type === 'ev_truck';
+  const dbMatch = (make && model)
+    ? matchVehicleInDb(make.toLowerCase(), model.toLowerCase(), isEvOffline, false)
+    : null;
 
   applyDecodeResult(dbMatch, {
     year: year || '20??',
     make, model, trim: '',
-    bodyClass: '',
-    fuel: type === 'ev' || type === 'ev_truck' ? 'Electric' : 'Gasoline',
-    isEv: type === 'ev' || type === 'ev_truck',
+    bodyClass: type === 'truck' ? 'Truck' : type === 'suv' ? 'SUV' : '',
+    fuel: isEvOffline ? 'Electric' : 'Gasoline',
+    isEv: isEvOffline,
     isHybrid: false,
     customName: `${year || ''} ${make}${model ? ' ' + model : ''}`.trim()
   });
