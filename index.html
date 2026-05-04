@@ -1287,6 +1287,438 @@
     to { opacity: 1; transform: translateY(0); }
   }
   .fade-in { animation: fadeUp 0.5s ease-out; }
+
+  /* ========== ENHANCED UI IMPROVEMENTS ========== */
+  
+  /* Smooth transitions for all interactive elements */
+  *, *::before, *::after {
+    transition-property: transform, box-shadow, border-color, background-color, opacity;
+    transition-duration: 0.2s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Exclude transitions from inputs when typing */
+  input[type="number"], input[type="text"], input[type="range"] {
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  /* Card hover effects */
+  .vehicle-panel {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .vehicle-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  }
+  
+  .card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  }
+  
+  .negot-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Enhanced verdict section with glow */
+  .verdict {
+    box-shadow: 
+      0 0 60px rgba(212, 165, 116, 0.08),
+      0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.4s ease;
+  }
+  
+  .verdict:hover {
+    box-shadow: 
+      0 0 80px rgba(212, 165, 116, 0.12),
+      0 8px 30px rgba(0, 0, 0, 0.35);
+    transform: translateY(-2px);
+  }
+  
+  .verdict.winner-a {
+    --verdict-glow: rgba(212, 165, 116, 0.15);
+  }
+  
+  .verdict.winner-b {
+    --verdict-glow: rgba(91, 155, 155, 0.15);
+  }
+  
+  .verdict::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at top left, var(--verdict-glow, rgba(212, 165, 116, 0.08)), transparent 60%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  
+  .verdict:hover::after {
+    opacity: 1;
+  }
+
+  /* Button hover effects */
+  .mode-bar .toggle button,
+  .mode-toggle button,
+  .scenario-actions button,
+  .vin-btn,
+  .chart-tabs button {
+    transition: all 0.2s ease;
+  }
+  
+  .mode-bar .toggle button:hover:not(.active),
+  .mode-toggle button:hover:not(.active) {
+    background: var(--bg-3);
+    color: var(--paper);
+  }
+  
+  .vin-btn:hover {
+    background: var(--bg-3);
+    border-color: var(--accent-a);
+    color: var(--accent-a);
+    transform: translateY(-1px);
+  }
+
+  /* Input focus states with glow */
+  .vehicle-panel.a input:focus,
+  .vehicle-panel.a select:focus {
+    border-color: var(--accent-a);
+    box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.15);
+    outline: none;
+  }
+  
+  .vehicle-panel.b input:focus,
+  .vehicle-panel.b select:focus {
+    border-color: var(--accent-b);
+    box-shadow: 0 0 0 3px rgba(91, 155, 155, 0.15);
+    outline: none;
+  }
+
+  /* Animated number values */
+  .animating {
+    animation: numberPop 0.3s ease-out;
+  }
+  
+  @keyframes numberPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); color: var(--gold); }
+    100% { transform: scale(1); }
+  }
+
+  /* Tooltip styles */
+  .has-tooltip {
+    position: relative;
+    cursor: help;
+    border-bottom: 1px dashed var(--text-faint);
+  }
+  
+  .has-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Geist', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+    max-width: 280px;
+    white-space: normal;
+    line-height: 1.5;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  
+  .has-tooltip::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border: 6px solid transparent;
+    border-top-color: var(--line);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+  }
+  
+  .has-tooltip:hover::after,
+  .has-tooltip:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Insight cards hover */
+  .insight {
+    transition: all 0.2s ease;
+  }
+  
+  .insight:hover {
+    border-color: var(--line);
+    background: var(--bg-2);
+    transform: translateX(4px);
+  }
+
+  /* Search result animation */
+  .search-results {
+    animation: slideDown 0.2s ease-out;
+  }
+  
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .search-result {
+    transition: all 0.15s ease;
+  }
+  
+  .search-result:hover {
+    background: var(--bg-3);
+    padding-left: 18px;
+  }
+
+  /* Mini stat hover */
+  .mini-stat {
+    padding: 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .mini-stat:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Normalize cell hover */
+  .normalize-cell {
+    transition: all 0.2s ease;
+  }
+  
+  .normalize-cell:hover {
+    background: var(--bg-3);
+  }
+
+  /* Negot stat hover */
+  .negot-stat {
+    transition: all 0.2s ease;
+  }
+  
+  .negot-stat:hover {
+    background: var(--bg-2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Progress bar for comparison */
+  .compare-bar {
+    height: 4px;
+    background: var(--bg);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .compare-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+  
+  .compare-bar-fill.a { background: var(--accent-a); }
+  .compare-bar-fill.b { background: var(--accent-b); }
+
+  /* Winner badge animation */
+  .winner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(143, 184, 154, 0.15);
+    border: 1px solid var(--accent-2);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    animation: winnerPulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes winnerPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(143, 184, 154, 0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(143, 184, 154, 0); }
+  }
+
+  /* Mobile sticky verdict */
+  @media (max-width: 768px) {
+    .verdict {
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+    }
+    
+    .verdict-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    
+    .verdict .delta {
+      text-align: left;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+    }
+    
+    .normalize-bar {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Section collapse for mobile */
+  .section-title {
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .section-title::after {
+    content: "";
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    margin-left: auto;
+    transition: transform 0.2s;
+  }
+  
+  .section-title.collapsed::after {
+    transform: rotate(-90deg);
+  }
+  
+  .section-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+  }
+  
+  .section-content.collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+  }
+
+  /* Keyboard focus visible */
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--accent-a);
+    outline-offset: 2px;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-2) 25%,
+      var(--bg-3) 50%,
+      var(--bg-2) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 2px;
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Table row hover */
+  .compare-table tbody tr {
+    transition: background 0.15s ease;
+  }
+  
+  .compare-table tbody tr:hover {
+    background: var(--bg-3);
+  }
+
+  /* Chart tabs active indicator */
+  .chart-tabs {
+    position: relative;
+  }
+  
+  .chart-tabs button {
+    position: relative;
+  }
+  
+  .chart-tabs button.active::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-a);
+    animation: tabSlide 0.2s ease-out;
+  }
+  
+  @keyframes tabSlide {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  /* Smooth scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--bg);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+  }
+
+  /* Header parallax effect on scroll */
+  header {
+    transition: padding 0.3s ease, opacity 0.3s ease;
+  }
+  
+  header.scrolled {
+    padding-bottom: 16px;
+  }
+  
+  header.scrolled .masthead h1 {
+    font-size: clamp(24px, 4vw, 36px);
+  }
+  
+  header.scrolled .sub {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    overflow: hidden;
+  }
 </style>
 </head>
 <body>
@@ -1333,17 +1765,17 @@
       <h3>Your Inputs</h3>
     </div>
     <div class="micro-field">
-      <label>County Millage</label>
+      <label class="has-tooltip" data-tooltip="Property tax rate in mills. Greenville County ranges 300-360. Higher millage = higher annual property tax on your vehicle.">County Millage</label>
       <div class="val" id="millageVal">320</div>
       <input type="range" id="millage" min="200" max="450" value="320" step="5"/>
     </div>
     <div class="micro-field">
-      <label>Investment Return</label>
+      <label class="has-tooltip" data-tooltip="Expected annual return if you invested the down payment instead. Used to calculate opportunity cost of cash tied up in the vehicle.">Investment Return</label>
       <div class="val" id="investReturnVal">7.00%</div>
       <input type="range" id="investReturn" min="0" max="15" value="7" step="0.25"/>
     </div>
     <div class="micro-field">
-      <label>Business Use</label>
+      <label class="has-tooltip" data-tooltip="Percentage of vehicle use for business purposes. May affect tax deductions if you itemize business expenses.">Business Use</label>
       <div class="val" id="businessUseVal">0%</div>
       <input type="range" id="businessUse" min="0" max="100" value="0" step="5"/>
     </div>
@@ -1399,7 +1831,7 @@
       </div>
 
       <div class="vehicle-body">
-        <div class="section-title"><span>Hold & Use Profile</span><span class="num">A·01</span></div>
+        <div class="section-title"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Hold & Use Profile</span><span class="num">A-01</span></div>
         <div class="field-row">
           <div class="field">
             <label><span class="name">Hold Period</span><span class="value" id="holdYearsAVal">6 yrs</span></label>
@@ -1411,7 +1843,7 @@
           </div>
         </div>
 
-        <div class="section-title"><span>Vehicle Pricing</span><span class="num">A·02</span></div>
+        <div class="section-title"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Vehicle Pricing</span><span class="num">A-02</span></div>
         <div class="field-row">
           <div class="field">
             <label><span class="name">MSRP</span><span class="value" id="msrpAVal">$58,000</span></label>
@@ -1429,7 +1861,7 @@
           </div>
         </div>
 
-        <div class="section-title"><span>Fuel / Energy</span><span class="num">A·03</span></div>
+        <div class="section-title"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M12 18v-6M9 15h6"/></svg>Fuel / Energy</span><span class="num">A-03</span></div>
         <div class="field-row">
           <div class="field" id="mpgFieldA">
             <label><span class="name">Combined MPG</span><span class="value" id="mpgAVal">24</span></label>
@@ -1471,7 +1903,7 @@
           <div class="payment-detail" id="buyPaymentDetailA">
             <div class="pd-title">Monthly Payment Breakdown</div>
             <div class="pd-row"><span class="label">Sale Price</span><span class="value" id="pdaSale">$0</span></div>
-            <div class="pd-row"><span class="label">+ SC IMF (5% capped @$500)</span><span class="value" id="pdaImf">$500</span></div>
+            <div class="pd-row"><span class="label has-tooltip" data-tooltip="Infrastructure Maintenance Fee: SC's alternative to sales tax on vehicles. 5% of sale price, capped at $500 maximum.">+ SC IMF (5% capped @$500)</span><span class="value" id="pdaImf">$500</span></div>
             <div class="pd-row"><span class="label">+ Doc Fee</span><span class="value" id="pdaDoc">$499</span></div>
             <div class="pd-row"><span class="label">+ Title/Tag/Plate</span><span class="value" id="pdaTitle">$80</span></div>
             <div class="pd-row"><span class="label">− Down Payment</span><span class="value" id="pdaDown">$0</span></div>
@@ -1485,7 +1917,7 @@
           <div class="section-title"><span>Lease Terms</span><span class="num">A·04</span></div>
           <div class="field-row">
             <div class="field">
-              <label><span class="name">Money Factor</span><span class="value" id="moneyFactorAVal">0.00208</span></label>
+              <label><span class="name has-tooltip" data-tooltip="The interest rate for a lease, expressed as a decimal. Multiply by 2400 to get the equivalent APR. Lower is better.">Money Factor</span><span class="value" id="moneyFactorAVal">0.00208</span></label>
               <input type="range" id="moneyFactorA" min="0" max="0.005" value="0.00208" step="0.00005"/>
             </div>
             <div class="field">
@@ -1500,11 +1932,11 @@
           </div>
           <div class="field-row">
             <div class="field">
-              <label><span class="name">Residual %</span><span class="value" id="residualPctAVal">62%</span></label>
+              <label><span class="name has-tooltip" data-tooltip="The predicted value of the vehicle at lease end, as a percentage of MSRP. Higher residual = lower monthly payments.">Residual %</span><span class="value" id="residualPctAVal">62%</span></label>
               <input type="range" id="residualPctA" min="35" max="75" value="62" step="1"/>
             </div>
             <div class="field">
-              <label><span class="name">Cap Reduction</span><span class="value" id="capReductionAVal">$2,500</span></label>
+              <label><span class="name has-tooltip" data-tooltip="Upfront payment to reduce the capitalized cost (like a down payment on a lease). Reduces monthly payments but increases upfront cash.">Cap Reduction</span><span class="value" id="capReductionAVal">$2,500</span></label>
               <div class="num-input-wrap">
                 <span class="prefix">$</span>
                 <input type="number" id="capReductionA" value="2500" step="500"/>
@@ -1583,7 +2015,7 @@
       </div>
 
       <div class="vehicle-body">
-        <div class="section-title"><span>Hold & Use Profile</span><span class="num">B·01</span></div>
+        <div class="section-title"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>Hold & Use Profile</span><span class="num">B-01</span></div>
         <div class="field-row">
           <div class="field">
             <label><span class="name">Hold Period</span><span class="value" id="holdYearsBVal">3 yrs</span></label>
@@ -1595,7 +2027,7 @@
           </div>
         </div>
 
-        <div class="section-title"><span>Vehicle Pricing</span><span class="num">B·02</span></div>
+        <div class="section-title"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Vehicle Pricing</span><span class="num">B-02</span></div>
         <div class="field-row">
           <div class="field">
             <label><span class="name">MSRP</span><span class="value" id="msrpBVal">$72,000</span></label>
@@ -1613,7 +2045,7 @@
           </div>
         </div>
 
-        <div class="section-title"><span>Fuel / Energy</span><span class="num">B·03</span></div>
+        <div class="section-title"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><path d="M14 3v5h5M12 18v-6M9 15h6"/></svg>Fuel / Energy</span><span class="num">B-03</span></div>
         <div class="field-row">
           <div class="field" id="mpgFieldB" style="display:none">
             <label><span class="name">Combined MPG</span><span class="value" id="mpgBVal">24</span></label>
@@ -1654,7 +2086,7 @@
           <div class="payment-detail" id="buyPaymentDetailB">
             <div class="pd-title">Monthly Payment Breakdown</div>
             <div class="pd-row"><span class="label">Sale Price</span><span class="value" id="pdbSale">$0</span></div>
-            <div class="pd-row"><span class="label">+ SC IMF (5% capped @$500)</span><span class="value" id="pdbImf">$500</span></div>
+            <div class="pd-row"><span class="label has-tooltip" data-tooltip="Infrastructure Maintenance Fee: SC's alternative to sales tax on vehicles. 5% of sale price, capped at $500 maximum.">+ SC IMF (5% capped @$500)</span><span class="value" id="pdbImf">$500</span></div>
             <div class="pd-row"><span class="label">+ Doc Fee</span><span class="value" id="pdbDoc">$499</span></div>
             <div class="pd-row"><span class="label">+ Title/Tag/Plate</span><span class="value" id="pdbTitle">$80</span></div>
             <div class="pd-row"><span class="label">− Down Payment</span><span class="value" id="pdbDown">$0</span></div>
@@ -1667,7 +2099,7 @@
           <div class="section-title"><span>Lease Terms</span><span class="num">B·04</span></div>
           <div class="field-row">
             <div class="field">
-              <label><span class="name">Money Factor</span><span class="value" id="moneyFactorBVal">0.00250</span></label>
+              <label><span class="name has-tooltip" data-tooltip="The interest rate for a lease, expressed as a decimal. Multiply by 2400 to get the equivalent APR. Lower is better.">Money Factor</span><span class="value" id="moneyFactorBVal">0.00250</span></label>
               <input type="range" id="moneyFactorB" min="0" max="0.005" value="0.00250" step="0.00005"/>
             </div>
             <div class="field">
@@ -1682,11 +2114,11 @@
           </div>
           <div class="field-row">
             <div class="field">
-              <label><span class="name">Residual %</span><span class="value" id="residualPctBVal">52%</span></label>
+              <label><span class="name has-tooltip" data-tooltip="The predicted value of the vehicle at lease end, as a percentage of MSRP. Higher residual = lower monthly payments.">Residual %</span><span class="value" id="residualPctBVal">52%</span></label>
               <input type="range" id="residualPctB" min="35" max="75" value="52" step="1"/>
             </div>
             <div class="field">
-              <label><span class="name">Cap Reduction</span><span class="value" id="capReductionBVal">$2,500</span></label>
+              <label><span class="name has-tooltip" data-tooltip="Upfront payment to reduce the capitalized cost (like a down payment on a lease). Reduces monthly payments but increases upfront cash.">Cap Reduction</span><span class="value" id="capReductionBVal">$2,500</span></label>
               <div class="num-input-wrap">
                 <span class="prefix">$</span>
                 <input type="number" id="capReductionB" value="2500" step="500"/>
@@ -3574,6 +4006,152 @@ function tickClock() {
 }
 tickClock();
 setInterval(tickClock, 60000);
+
+// ============= UI ENHANCEMENTS =============
+
+// Animated number updates
+function animateValue(element) {
+  if (!element) return;
+  element.classList.add('animating');
+  setTimeout(() => element.classList.remove('animating'), 300);
+}
+
+// Observe value changes for animation
+const valueObserver = new MutationObserver((mutations) => {
+  mutations.forEach((mutation) => {
+    if (mutation.type === 'childList' || mutation.type === 'characterData') {
+      animateValue(mutation.target);
+    }
+  });
+});
+
+// Apply observer to key value elements
+document.querySelectorAll('.total-line .val, .delta-amount, .mini-stat .val, .normalize-cell .val').forEach(el => {
+  valueObserver.observe(el, { childList: true, characterData: true, subtree: true });
+});
+
+// Header scroll effect
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const header = document.querySelector('header');
+  const scrollY = window.scrollY;
+  
+  if (scrollY > 100) {
+    header.classList.add('scrolled');
+  } else {
+    header.classList.remove('scrolled');
+  }
+  lastScroll = scrollY;
+}, { passive: true });
+
+// Verdict winner class based on result
+const originalUpdateVerdict = updateVerdict;
+updateVerdict = function(a, b) {
+  originalUpdateVerdict(a, b);
+  
+  const verdict = document.getElementById('verdict');
+  const annA = a.total / a.T;
+  const annB = b.total / b.T;
+  
+  verdict.classList.remove('winner-a', 'winner-b');
+  if (annA < annB) {
+    verdict.classList.add('winner-a');
+    verdict.style.setProperty('--verdict-color', 'var(--accent-a)');
+  } else {
+    verdict.classList.add('winner-b');
+    verdict.style.setProperty('--verdict-color', 'var(--accent-b)');
+  }
+};
+
+// Mode toggle smooth transition
+document.querySelectorAll('.mode-toggle').forEach(toggle => {
+  toggle.addEventListener('click', (e) => {
+    if (e.target.tagName === 'BUTTON') {
+      const panel = toggle.closest('.vehicle-panel');
+      const body = panel.querySelector('.vehicle-body');
+      
+      // Add subtle flash effect
+      body.style.opacity = '0.7';
+      setTimeout(() => {
+        body.style.opacity = '1';
+      }, 150);
+    }
+  });
+});
+
+// Section collapse functionality (mobile-friendly)
+document.querySelectorAll('.section-title').forEach(title => {
+  title.addEventListener('click', (e) => {
+    // Only on mobile
+    if (window.innerWidth > 768) return;
+    
+    const content = [];
+    let sibling = title.nextElementSibling;
+    
+    while (sibling && !sibling.classList.contains('section-title')) {
+      content.push(sibling);
+      sibling = sibling.nextElementSibling;
+    }
+    
+    const isCollapsed = title.classList.toggle('collapsed');
+    
+    content.forEach(el => {
+      if (isCollapsed) {
+        el.style.maxHeight = '0';
+        el.style.opacity = '0';
+        el.style.overflow = 'hidden';
+        el.style.marginBottom = '0';
+      } else {
+        el.style.maxHeight = '';
+        el.style.opacity = '';
+        el.style.overflow = '';
+        el.style.marginBottom = '';
+      }
+    });
+  });
+});
+
+// Compare mode toggle animation
+document.getElementById('compareModeToggle').addEventListener('click', (e) => {
+  if (e.target.tagName === 'BUTTON') {
+    // Flash the verdict section to draw attention
+    const verdict = document.getElementById('verdict');
+    verdict.style.transform = 'scale(1.01)';
+    setTimeout(() => {
+      verdict.style.transform = '';
+    }, 200);
+  }
+});
+
+// Search input focus effect
+document.querySelectorAll('.vehicle-search').forEach(input => {
+  input.addEventListener('focus', function() {
+    this.closest('.search-wrap').style.transform = 'scale(1.01)';
+  });
+  
+  input.addEventListener('blur', function() {
+    this.closest('.search-wrap').style.transform = '';
+  });
+});
+
+// Add keyboard shortcuts hint
+document.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + 1 focuses Vehicle A search
+  if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+    e.preventDefault();
+    document.querySelector('.vehicle-panel.a .vehicle-search').focus();
+  }
+  // Ctrl/Cmd + 2 focuses Vehicle B search
+  if ((e.ctrlKey || e.metaKey) && e.key === '2') {
+    e.preventDefault();
+    document.querySelector('.vehicle-panel.b .vehicle-search').focus();
+  }
+  // Ctrl/Cmd + S saves scenario
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    document.getElementById('saveBtn').click();
+  }
+});
 
 // ============= INIT =============
 bindShared();
