@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0f0e0c"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <title>Vehicle Decision Engine v4 — SC Edition</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1574,21 +1578,99 @@
       top: 12px;
       z-index: 50;
     }
-    
+
     .verdict-grid {
       grid-template-columns: 1fr;
       gap: 16px;
     }
-    
+
     .verdict .delta {
       text-align: left;
       padding-top: 12px;
       border-top: 1px dashed var(--line);
     }
-    
+
     .normalize-bar {
       grid-template-columns: repeat(2, 1fr);
     }
+
+    /* Tighter container chrome — respect iOS safe areas */
+    .container {
+      padding: 18px 14px;
+      padding-bottom: calc(56px + env(safe-area-inset-bottom));
+      padding-left: max(14px, env(safe-area-inset-left));
+      padding-right: max(14px, env(safe-area-inset-right));
+    }
+    header { padding-bottom: 16px; margin-bottom: 16px; gap: 14px; }
+    .masthead .sub { font-size: 13px; margin-top: 10px; }
+    .meta-strip { text-align: left; }
+
+    /* Stack vehicle panel internals to one column */
+    .field-row { grid-template-columns: 1fr; gap: 8px; }
+    .vehicle-body { padding: 14px 14px; }
+    .vehicle-panel { border-radius: 4px; }
+
+    /* Tap-friendly slider thumbs (Apple HIG = 44pt min) */
+    input[type="range"] { height: 8px; padding: 12px 0; background-clip: content-box; }
+    input[type="range"]::-webkit-slider-thumb {
+      width: 26px;
+      height: 26px;
+      box-shadow: 0 0 0 6px rgba(212,165,116,0.18);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 26px;
+      height: 26px;
+      border: none;
+    }
+    .vehicle-panel.b input[type="range"]::-webkit-slider-thumb {
+      box-shadow: 0 0 0 6px rgba(91,155,155,0.18);
+    }
+
+    /* Bigger number inputs and buttons (44px tap target) */
+    .field input[type="number"], .field select {
+      padding: 12px 14px;
+      font-size: 15px;
+      min-height: 44px;
+    }
+    .field label .name, .field label .value { font-size: 14px; }
+    .micro-field input[type="number"] {
+      padding: 11px 10px 11px 22px;
+      font-size: 14px;
+      min-height: 44px;
+    }
+    button { min-height: 44px; }
+    .vin-btn { min-height: 44px; padding: 0 18px; font-size: 13px; }
+
+    /* Vehicle search row stacks on narrow screens */
+    .selector-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .search-wrap { width: 100%; }
+    .vin-btn { width: 100%; }
+
+    /* Modal: edge-to-edge with safe padding */
+    .modal { padding: 12px; align-items: flex-start; padding-top: 8vh; }
+    .modal-content { padding: 20px 18px; max-width: 100%; }
+    .modal-content h3 { font-size: 19px; }
+    .modal-content input { font-size: 15px; padding: 12px 14px; min-height: 44px; }
+
+    /* Shared bar: one column on phones for legibility */
+    .shared-bar { grid-template-columns: 1fr; gap: 14px; }
+    .shared-bar .head { border-right: none; border-bottom: 1px solid var(--line); padding-right: 0; padding-bottom: 12px; }
+
+    /* Vehicle name + meta line */
+    h2[id^="name"] { font-size: 20px; }
+    .meta-line { font-size: 11px; word-break: break-word; }
+
+    /* Chart container: keep height reasonable */
+    .chart-wrap { height: 260px; }
+
+    /* Saved scenarios list */
+    .saved-list { grid-template-columns: 1fr; }
+
+    /* Verdict text scales down */
+    .verdict h2 { font-size: clamp(20px, 5.5vw, 28px); }
+
+    /* Compare table — allow horizontal scroll on phones */
+    .compare-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   }
 
   /* Section collapse for mobile */
